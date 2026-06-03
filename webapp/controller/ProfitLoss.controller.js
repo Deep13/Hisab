@@ -108,16 +108,68 @@ sap.ui.define(
 
       _openDetailDialog: function (data) {
         var that = this;
+        sap.ui.core.BusyIndicator.show(0);
+        $.ajax({
+          url: that.uri,
+          type: "POST",
+          data: {
+            method: "getClientTransaction",
+            data: JSON.stringify({
+              Client: "All",
+              month: data.month,
+              year: data.year,
+              machineType: "All",
+              officeType: "All"
+            })
+          },
+          dataType: "json",
+          success: function (transactions) {
+            sap.ui.core.BusyIndicator.hide();
+            var officeBreakdown = that._buildOfficeBreakdown(transactions || []);
+            that._showDetailDialog(data, officeBreakdown);
+          },
+          error: function () {
+            sap.ui.core.BusyIndicator.hide();
+            that._showDetailDialog(data, {});
+          }
+        });
+      },
+
+      _buildOfficeBreakdown: function (transactions) {
+        // machineType -> earnings key
+        var typeToKey = {
+          "Shaving": "shaving",
+          "Buffing": "buffing",
+          "Milling": "milling",
+          "Softening": "charbi",
+          "Tangan": "tangan"
+        };
+        // office -> { shaving: amount, buffing: amount, ... }
+        var byOffice = {};
+        transactions.forEach(function (t) {
+          var office = (t.cc || "").trim() || "(Unspecified)";
+          var key = typeToKey[t.machineType];
+          if (!key) { return; }
+          if (!byOffice[office]) {
+            byOffice[office] = { shaving: 0, buffing: 0, charbi: 0, milling: 0, tangan: 0 };
+          }
+          byOffice[office][key] += parseFloat(t.total) || 0;
+        });
+        return byOffice;
+      },
+
+      _showDetailDialog: function (data, officeBreakdown) {
+        var that = this;
         var oDialog = new Dialog({
           title: "P&L Detail - " + data.monthLabel,
-          contentWidth: "650px",
-          contentHeight: "700px",
-          content: this._buildDetailContent(data),
+          contentWidth: "700px",
+          contentHeight: "750px",
+          content: this._buildDetailContent(data, officeBreakdown),
           beginButton: new Button({
             text: "Print",
             icon: "sap-icon://print",
             type: "Emphasized",
-            press: function () { that._printPLDetail(data); }
+            press: function () { that._printPLDetail(data, officeBreakdown); }
           }),
           endButton: new Button({
             text: "Close",
@@ -129,7 +181,7 @@ sap.ui.define(
         oDialog.open();
       },
 
-      _printPLDetail: function (data) {
+      _printPLDetail: function (data, officeBreakdown) {
         var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>P&L - ' + data.monthLabel + '</title>';
         html += '<style>';
         html += '* { margin: 0; padding: 0; box-sizing: border-box; }';
@@ -156,8 +208,32 @@ sap.ui.define(
         html += '<div class="net">= Net Profit: ' + data.netProfit.toLocaleString("en-IN") + '</div>';
         html += '</div>';
 
-        // Earnings
-        html += '<div class="section-title">Earnings Breakdown</div>';
+        // Earnings by Office
+        html += '<div class="section-title">Earnings by Office</div>';
+        var offices = Object.keys(officeBreakdown || {}).sort();
+        if (offices.length === 0) {
+          html += '<p style="padding:4px 0;color:#888">No office-level transaction data available.</p>';
+        } else {
+          offices.forEach(function (office) {
+            var oData = officeBreakdown[office];
+            html += '<div style="font-weight:bold;margin:12px 0 6px 0">' + office + '</div>';
+            html += '<table><tr><th>Earning</th><th class="num">Amount</th><th class="num">Profit</th></tr>';
+            var officeAmt = 0, officeProfit = 0;
+            EARNINGS.forEach(function (e) {
+              var amt = parseFloat(oData[e.key]) || 0;
+              var profit = Math.floor(amt * e.profitMultiplier);
+              officeAmt += amt;
+              officeProfit += profit;
+              html += '<tr><td>' + e.label + '</td><td class="num">' + amt.toLocaleString("en-IN")
+                + '</td><td class="num">' + profit.toLocaleString("en-IN") + '</td></tr>';
+            });
+            html += '<tr class="total"><td>Subtotal</td><td class="num">' + officeAmt.toLocaleString("en-IN")
+              + '</td><td class="num">' + officeProfit.toLocaleString("en-IN") + '</td></tr></table>';
+          });
+        }
+
+        // Grand earnings
+        html += '<div class="section-title">Grand Earnings Total</div>';
         html += '<table><tr><th>Earning</th><th class="num">Amount</th><th class="num">Profit</th></tr>';
         EARNINGS.forEach(function (e) {
           var amt = parseFloat(data[e.key]) || 0;
@@ -186,7 +262,8 @@ sap.ui.define(
         w.onload = function () { w.print(); };
       },
 
-      _buildDetailContent: function (data) {
+      _buildDetailContent: function (data, officeBreakdown) {
+        var that = this;
         var vbox = new VBox().addStyleClass("sapUiMediumMargin");
 
         // Calculation summary at top
@@ -201,32 +278,68 @@ sap.ui.define(
         }).addStyleClass("sapUiSmallMarginTop"));
         vbox.addItem(calcBoxTop);
 
-        // Earnings table
-        vbox.addItem(new Title({ text: "Earnings Breakdown", level: "H4" })
+        // Earnings by Office
+        vbox.addItem(new Title({ text: "Earnings by Office", level: "H4" })
           .addStyleClass("sapUiSmallMarginBottom").addStyleClass("sapUiLargeMarginTop"));
-        var earningsTable = this._buildSummaryTable(["Earning", "Amount", "Profit", "% of Gross"]);
+
+        var offices = Object.keys(officeBreakdown || {}).sort();
+        if (offices.length === 0) {
+          vbox.addItem(new Text({ text: "No office-level transaction data available." })
+            .addStyleClass("sapUiSmallMarginBegin"));
+        } else {
+          offices.forEach(function (office) {
+            var oData = officeBreakdown[office];
+            vbox.addItem(new Title({ text: office, level: "H5" })
+              .addStyleClass("sapUiSmallMarginTop").addStyleClass("sapUiTinyMarginBottom"));
+            var t = that._buildSummaryTable(["Earning", "Amount", "Profit"]);
+            var officeAmt = 0, officeProfit = 0;
+            EARNINGS.forEach(function (e) {
+              var amt = parseFloat(oData[e.key]) || 0;
+              var profit = Math.floor(amt * e.profitMultiplier);
+              officeAmt += amt;
+              officeProfit += profit;
+              t.addItem(new ColumnListItem({
+                cells: [
+                  new Text({ text: e.label }),
+                  new Text({ text: amt.toLocaleString("en-IN") }),
+                  new Text({ text: profit.toLocaleString("en-IN") })
+                ]
+              }));
+            });
+            t.addItem(new ColumnListItem({
+              cells: [
+                new Label({ text: "Subtotal", design: "Bold" }),
+                new Label({ text: officeAmt.toLocaleString("en-IN"), design: "Bold" }),
+                new Label({ text: officeProfit.toLocaleString("en-IN"), design: "Bold" })
+              ]
+            }));
+            vbox.addItem(t);
+          });
+        }
+
+        // Grand earnings total
+        vbox.addItem(new Title({ text: "Grand Earnings Total", level: "H5" })
+          .addStyleClass("sapUiMediumMarginTop").addStyleClass("sapUiTinyMarginBottom"));
+        var grandTable = this._buildSummaryTable(["Earning", "Amount", "Profit"]);
         EARNINGS.forEach(function (e) {
           var amt = parseFloat(data[e.key]) || 0;
           var profit = Math.floor(amt * e.profitMultiplier);
-          var pct = data.grossProfit > 0 ? ((profit / data.grossProfit) * 100).toFixed(1) + "%" : "0%";
-          earningsTable.addItem(new ColumnListItem({
+          grandTable.addItem(new ColumnListItem({
             cells: [
               new Text({ text: e.label }),
               new Text({ text: amt.toLocaleString("en-IN") }),
-              new Text({ text: profit.toLocaleString("en-IN") }),
-              new Text({ text: pct })
+              new Text({ text: profit.toLocaleString("en-IN") })
             ]
           }));
         });
-        earningsTable.addItem(new ColumnListItem({
+        grandTable.addItem(new ColumnListItem({
           cells: [
             new Label({ text: "Total", design: "Bold" }),
             new Label({ text: data.totalEarning.toLocaleString("en-IN"), design: "Bold" }),
-            new Label({ text: data.grossProfit.toLocaleString("en-IN"), design: "Bold" }),
-            new Label({ text: "100%", design: "Bold" })
+            new Label({ text: data.grossProfit.toLocaleString("en-IN"), design: "Bold" })
           ]
         }));
-        vbox.addItem(earningsTable);
+        vbox.addItem(grandTable);
 
         // Expenses table
         vbox.addItem(new Title({ text: "Expense Outer Breakdown", level: "H4" })
@@ -287,8 +400,10 @@ sap.ui.define(
           electricBill: 0, munshi: 0, churi: 0, mobil: 0, buffPaper: 0,
           bhussi: 0, maintenance: 0, vBelt: 0, miscellaneous: 0,
           shavingProfit: 0, buffingProfit: 0, charbiProfit: 0, millingProfit: 0, tanganProfit: 0,
-          totalEarning: 0, totalExpense: 0, grossProfit: 0, netProfit: 0
+          totalEarning: 0, totalExpense: 0, grossProfit: 0, netProfit: 0,
+          offices: []
         });
+        oFormModel.setSizeLimit(100);
 
         var that = this;
 
@@ -315,35 +430,9 @@ sap.ui.define(
         }));
         content.addItem(headerRow);
 
-        // Earnings table
-        content.addItem(new Title({ text: "Earnings", level: "H4" })
-          .addStyleClass("sapUiSmallMarginTop").addStyleClass("sapUiTinyMarginBottom"));
-        var eTable = new Table({ inset: false }).addStyleClass("sapUiSizeCompact");
-        eTable.addColumn(new Column({ header: new Label({ text: "Earning", design: "Bold" }) }));
-        eTable.addColumn(new Column({ hAlign: "Right", header: new Label({ text: "Amount", design: "Bold" }) }));
-        eTable.addColumn(new Column({ hAlign: "Right", header: new Label({ text: "Profit", design: "Bold" }) }));
-        EARNINGS.forEach(function (e) {
-          var profitKey = e.key + "Profit";
-          eTable.addItem(new ColumnListItem({
-            cells: [
-              new Text({ text: e.label }),
-              new Input({
-                value: "{form>/" + e.key + "}",
-                type: "Number",
-                liveChange: function () { that._recalcForm(oFormModel); }
-              }),
-              new Text({ text: "{form>/" + profitKey + "}" })
-            ]
-          }));
-        });
-        eTable.addItem(new ColumnListItem({
-          cells: [
-            new Label({ text: "Total", design: "Bold" }),
-            new Label({ text: "{form>/totalEarning}", design: "Bold" }),
-            new Label({ text: "{form>/grossProfit}", design: "Bold" })
-          ]
-        }));
-        content.addItem(eTable);
+        // Earnings: one editable table per office, rebuilt dynamically
+        this._earningsContainer = new VBox();
+        content.addItem(this._earningsContainer);
 
         // Expenses table
         content.addItem(new Title({ text: "Expense Outer", level: "H4" })
@@ -440,15 +529,39 @@ sap.ui.define(
           },
           dataType: "json",
           success: function (transactions) {
-            // Reset earnings
-            EARNINGS.forEach(function (e) { data[e.key] = 0; });
+            var officeMap = {};
             (transactions || []).forEach(function (t) {
               var key = typeToKey[t.machineType];
-              if (key) {
-                data[key] = (data[key] || 0) + (parseFloat(t.total) || 0);
+              if (!key) { return; }
+              var amt = parseFloat(t.total) || 0;
+              var office = (t.cc || "").trim() || "(Unspecified)";
+              if (!officeMap[office]) {
+                officeMap[office] = { shaving: 0, buffing: 0, milling: 0, charbi: 0, tangan: 0 };
               }
+              officeMap[office][key] += amt;
             });
+
+            // Build offices array; ensure at least one row exists for manual entry
+            var offices = Object.keys(officeMap).sort().map(function (name) {
+              var o = officeMap[name];
+              return {
+                name: name,
+                shaving: o.shaving,
+                buffing: o.buffing,
+                charbi: o.charbi,
+                milling: o.milling,
+                tangan: o.tangan
+              };
+            });
+            if (offices.length === 0) {
+              offices.push({ name: "Manual", shaving: 0, buffing: 0, charbi: 0, milling: 0, tangan: 0 });
+            }
+            data.offices = offices;
             oFormModel.setData(data);
+
+            // Compute office subtotals + aggregate, then rebuild UI
+            offices.forEach(function (_, idx) { that._recalcOffice(oFormModel, idx); });
+            that._rebuildEarningsTables(oFormModel);
             that._recalcForm(oFormModel);
             sap.ui.core.BusyIndicator.hide();
           },
@@ -458,16 +571,42 @@ sap.ui.define(
         });
       },
 
+      _recalcOffice: function (oFormModel, idx) {
+        var office = oFormModel.getProperty("/offices/" + idx);
+        if (!office) { return; }
+        var subAmt = 0, subProfit = 0;
+        EARNINGS.forEach(function (e) {
+          var amt = parseFloat(office[e.key]) || 0;
+          var profit = Math.floor(amt * e.profitMultiplier);
+          office[e.key + "Profit"] = profit;
+          subAmt += amt;
+          subProfit += profit;
+        });
+        office.subtotalAmt = subAmt;
+        office.subtotalProfit = subProfit;
+        oFormModel.setProperty("/offices/" + idx, office);
+      },
+
       _recalcForm: function (oFormModel) {
         var d = oFormModel.getData();
+        var offices = d.offices || [];
+
+        // Aggregate per-earning across offices
         var totalEarn = 0, gross = 0;
         EARNINGS.forEach(function (e) {
-          var amt = parseFloat(d[e.key]) || 0;
-          var profit = Math.floor(amt * e.profitMultiplier);
-          d[e.key + "Profit"] = profit;
-          totalEarn += amt;
-          gross += profit;
+          var sumAmt = 0, sumProfit = 0;
+          offices.forEach(function (o) {
+            var amt = parseFloat(o[e.key]) || 0;
+            sumAmt += amt;
+            sumProfit += Math.floor(amt * e.profitMultiplier);
+          });
+          d[e.key] = sumAmt;
+          d[e.key + "Profit"] = sumProfit;
+          totalEarn += sumAmt;
+          gross += sumProfit;
         });
+
+        // Expenses
         var totalExp = 0;
         EXPENSES.forEach(function (x) {
           totalExp += parseFloat(d[x.inputKey]) || 0;
@@ -477,6 +616,86 @@ sap.ui.define(
         d.grossProfit = gross;
         d.netProfit = gross - totalExp;
         oFormModel.setData(d);
+      },
+
+      _rebuildEarningsTables: function (oFormModel) {
+        var container = this._earningsContainer;
+        if (!container) { return; }
+        container.destroyItems();
+        var that = this;
+        var offices = oFormModel.getProperty("/offices") || [];
+
+        offices.forEach(function (o, idx) {
+          container.addItem(new Title({ text: "Earnings - " + o.name, level: "H4" })
+            .addStyleClass("sapUiMediumMarginTop").addStyleClass("sapUiTinyMarginBottom"));
+          container.addItem(that._buildOfficeEarningsTable(idx, oFormModel));
+        });
+
+        // Total earnings table at the end
+        container.addItem(new Title({ text: "Total Earnings", level: "H4" })
+          .addStyleClass("sapUiMediumMarginTop").addStyleClass("sapUiTinyMarginBottom"));
+        container.addItem(that._buildTotalEarningsTable());
+      },
+
+      _buildOfficeEarningsTable: function (officeIdx, oFormModel) {
+        var that = this;
+        var path = "/offices/" + officeIdx;
+        var t = new Table({ inset: false }).addStyleClass("sapUiSizeCompact");
+        t.addColumn(new Column({ header: new Label({ text: "Earning", design: "Bold" }) }));
+        t.addColumn(new Column({ hAlign: "Right", header: new Label({ text: "Amount", design: "Bold" }) }));
+        t.addColumn(new Column({ hAlign: "Right", header: new Label({ text: "Profit", design: "Bold" }) }));
+
+        EARNINGS.forEach(function (e) {
+          t.addItem(new ColumnListItem({
+            cells: [
+              new Text({ text: e.label }),
+              new Input({
+                value: "{form>" + path + "/" + e.key + "}",
+                type: "Number",
+                liveChange: function () {
+                  that._recalcOffice(oFormModel, officeIdx);
+                  that._recalcForm(oFormModel);
+                }
+              }),
+              new Text({ text: "{form>" + path + "/" + e.key + "Profit}" })
+            ]
+          }));
+        });
+
+        t.addItem(new ColumnListItem({
+          cells: [
+            new Label({ text: "Subtotal", design: "Bold" }),
+            new Label({ text: "{form>" + path + "/subtotalAmt}", design: "Bold" }),
+            new Label({ text: "{form>" + path + "/subtotalProfit}", design: "Bold" })
+          ]
+        }));
+        return t;
+      },
+
+      _buildTotalEarningsTable: function () {
+        var t = new Table({ inset: false }).addStyleClass("sapUiSizeCompact");
+        t.addColumn(new Column({ header: new Label({ text: "Earning", design: "Bold" }) }));
+        t.addColumn(new Column({ hAlign: "Right", header: new Label({ text: "Amount", design: "Bold" }) }));
+        t.addColumn(new Column({ hAlign: "Right", header: new Label({ text: "Profit", design: "Bold" }) }));
+
+        EARNINGS.forEach(function (e) {
+          t.addItem(new ColumnListItem({
+            cells: [
+              new Text({ text: e.label }),
+              new Text({ text: "{form>/" + e.key + "}" }),
+              new Text({ text: "{form>/" + e.key + "Profit}" })
+            ]
+          }));
+        });
+
+        t.addItem(new ColumnListItem({
+          cells: [
+            new Label({ text: "Total", design: "Bold" }),
+            new Label({ text: "{form>/totalEarning}", design: "Bold" }),
+            new Label({ text: "{form>/grossProfit}", design: "Bold" })
+          ]
+        }));
+        return t;
       },
 
       _saveProfitLoss: function (formData, dialog) {

@@ -551,7 +551,7 @@ sap.ui.define(
         html += 'h1 { text-align: center; font-size: 22px; margin-bottom: 4px; }';
         html += 'h2 { text-align: center; font-size: 15px; color: #6a6d70; font-weight: normal; margin-bottom: 20px; }';
         html += 'table { width: 100%; font-size: 12px; }';
-        html += '@media print { @page { size: landscape; } html, body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }';
+        html += '@media print { @page { size: portrait; } html, body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }';
         html += '</style></head><body>';
         html += '<h1>Process Matrix - R&amp;D Enterprise</h1>';
         html += '<h2>' + monthName + ' ' + year + ' &nbsp;|&nbsp; Office: ' + office + '</h2>';

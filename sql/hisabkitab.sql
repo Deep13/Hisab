@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 03, 2026 at 03:29 PM
+-- Generation Time: Jun 03, 2026 at 04:00 PM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.0.30
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -676,6 +676,32 @@ INSERT INTO `masterlabor` (`id`, `Labor`) VALUES
 ('vikashram', 'Vikash Ram'),
 ('vinayram', 'Vinay Ram'),
 ('yunishbhai', 'yunish bhai');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `profit_loss`
+--
+
+CREATE TABLE `profit_loss` (
+  `id` int(11) NOT NULL,
+  `month` varchar(2) NOT NULL,
+  `year` varchar(4) NOT NULL,
+  `shaving` decimal(12,2) DEFAULT 0.00,
+  `buffing` decimal(12,2) DEFAULT 0.00,
+  `charbi` decimal(12,2) DEFAULT 0.00,
+  `milling` decimal(12,2) DEFAULT 0.00,
+  `tangan` decimal(12,2) DEFAULT 0.00,
+  `electric_bill` decimal(12,2) DEFAULT 0.00,
+  `munshi` decimal(12,2) DEFAULT 0.00,
+  `churi` decimal(12,2) DEFAULT 0.00,
+  `mobil` decimal(12,2) DEFAULT 0.00,
+  `buff_paper` decimal(12,2) DEFAULT 0.00,
+  `bhussi` decimal(12,2) DEFAULT 0.00,
+  `maintenance` decimal(12,2) DEFAULT 0.00,
+  `v_belt` decimal(12,2) DEFAULT 0.00,
+  `miscellaneous` decimal(12,2) DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -63483,6 +63509,13 @@ ALTER TABLE `masterlabor`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `profit_loss`
+--
+ALTER TABLE `profit_loss`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_month` (`month`,`year`);
+
+--
 -- Indexes for table `routine`
 --
 ALTER TABLE `routine`
@@ -63509,6 +63542,12 @@ ALTER TABLE `transaction`
 --
 -- AUTO_INCREMENT for dumped tables
 --
+
+--
+-- AUTO_INCREMENT for table `profit_loss`
+--
+ALTER TABLE `profit_loss`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `routine`

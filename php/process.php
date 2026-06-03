@@ -54,6 +54,8 @@ function getDbConnection() {
         $username = "root";
         $password = "";
         $dbname = "hisabkitab";
+        // Suppress mysqli throwing exceptions; we handle errors via return codes
+        mysqli_report(MYSQLI_REPORT_OFF);
         $conn = new mysqli($servername, $username, $password, $dbname);
         if ($conn->connect_error) {
             http_response_code(500);
@@ -507,8 +509,12 @@ function getLabourAnalytics() {
 
 function getProfitLoss() {
     $conn = getDbConnection();
-    $result = $conn->query("SELECT * FROM profit_loss ORDER BY `year` DESC, `month` DESC");
-    if ($result && $result->num_rows > 0) {
+    $result = @$conn->query("SELECT * FROM profit_loss ORDER BY `year` DESC, `month` DESC");
+    if (!$result) {
+        // Table likely missing
+        return json_encode([]);
+    }
+    if ($result->num_rows > 0) {
         return json_encode(fetchAll($result));
     }
     return json_encode([]);
@@ -534,7 +540,7 @@ function insertProfitLoss() {
     $vBelt = (float)($obj->vBelt ?? 0);
     $miscellaneous = (float)($obj->miscellaneous ?? 0);
 
-    $stmt = $conn->prepare(
+    $stmt = @$conn->prepare(
         "INSERT INTO profit_loss (month, year, shaving, buffing, charbi, milling, tangan, electric_bill, munshi, churi, mobil, buff_paper, bhussi, maintenance, v_belt, miscellaneous)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
@@ -544,6 +550,9 @@ function insertProfitLoss() {
             buff_paper = VALUES(buff_paper), bhussi = VALUES(bhussi), maintenance = VALUES(maintenance),
             v_belt = VALUES(v_belt), miscellaneous = VALUES(miscellaneous)"
     );
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'profit_loss' does not exist. Please create it in the database."]);
+    }
     $stmt->bind_param("ssdddddddddddddd",
         $month, $year, $shaving, $buffing, $charbi, $milling, $tangan,
         $electricBill, $munshi, $churi, $mobil, $buffPaper, $bhussi, $maintenance, $vBelt, $miscellaneous
