@@ -526,6 +526,39 @@ sap.ui.define(
         $("#processMatrixDiv").html(html);
       },
 
+      onPrintMatrix: function () {
+        var matrixDiv = document.getElementById("processMatrixDiv");
+        if (!matrixDiv || !matrixDiv.innerHTML.trim() || matrixDiv.innerHTML.indexOf("No data") > -1) {
+          sap.m.MessageBox.information("No data available to print");
+          return;
+        }
+
+        var office = this.byId("idMatrixOffice").getSelectedKey();
+        var monthKey = this.byId("idMatrixMonth").getSelectedKey();
+        var year = this.byId("idMatrixYear").getSelectedKey();
+        var monthName = this._monthNames[parseInt(monthKey, 10) - 1] || "";
+
+        var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Process Matrix</title>';
+        html += '<style>';
+        html += '* { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }';
+        html += 'body { font-family: "72", Arial, Helvetica, sans-serif; color: #32363a; padding: 25px; }';
+        html += 'h1 { text-align: center; font-size: 22px; margin-bottom: 4px; }';
+        html += 'h2 { text-align: center; font-size: 15px; color: #6a6d70; font-weight: normal; margin-bottom: 20px; }';
+        html += 'table { width: 100%; font-size: 12px; }';
+        html += '@media print { @page { size: landscape; } html, body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }';
+        html += '</style></head><body>';
+        html += '<h1>Process Matrix - R&amp;D Enterprise</h1>';
+        html += '<h2>' + monthName + ' ' + year + ' &nbsp;|&nbsp; Office: ' + office + '</h2>';
+        html += matrixDiv.innerHTML;
+        html += '</body></html>';
+
+        var w = window.open('', '_blank');
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+        w.onload = function () { w.print(); };
+      },
+
       // ==================== LABOUR COMPARISON ====================
 
       _initLabourCompareDefaults: function () {

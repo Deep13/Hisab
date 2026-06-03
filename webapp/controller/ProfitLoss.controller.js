@@ -114,6 +114,12 @@ sap.ui.define(
           contentHeight: "700px",
           content: this._buildDetailContent(data),
           beginButton: new Button({
+            text: "Print",
+            icon: "sap-icon://print",
+            type: "Emphasized",
+            press: function () { that._printPLDetail(data); }
+          }),
+          endButton: new Button({
             text: "Close",
             press: function () { oDialog.close(); }
           }),
@@ -121,6 +127,63 @@ sap.ui.define(
         });
         this.getView().addDependent(oDialog);
         oDialog.open();
+      },
+
+      _printPLDetail: function (data) {
+        var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>P&L - ' + data.monthLabel + '</title>';
+        html += '<style>';
+        html += '* { margin: 0; padding: 0; box-sizing: border-box; }';
+        html += 'body { font-family: "72", Arial, Helvetica, sans-serif; color: #32363a; padding: 30px; }';
+        html += 'h1 { text-align: center; font-size: 24px; margin-bottom: 6px; }';
+        html += 'h2 { text-align: center; font-size: 16px; color: #6a6d70; font-weight: normal; margin-bottom: 24px; }';
+        html += '.calc-box { background: #f5f5f5; padding: 16px; border-radius: 6px; margin-bottom: 24px; }';
+        html += '.calc-box .line { font-size: 14px; padding: 2px 0; }';
+        html += '.calc-box .net { font-size: 20px; font-weight: bold; padding-top: 8px; margin-top: 6px; border-top: 1px solid #bbb; }';
+        html += '.section-title { font-size: 16px; font-weight: bold; margin: 18px 0 8px 0; }';
+        html += 'table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }';
+        html += 'th { background: #f2f2f2; border: 1px solid #bbb; padding: 8px 10px; text-align: left; font-weight: bold; }';
+        html += 'th.num, td.num { text-align: right; }';
+        html += 'td { border: 1px solid #bbb; padding: 6px 10px; }';
+        html += '.total td { font-weight: bold; background: #f2f2f2; }';
+        html += '</style></head><body>';
+
+        html += '<h1>R&amp;D Enterprise - Profit &amp; Loss</h1>';
+        html += '<h2>' + data.monthLabel + '</h2>';
+
+        html += '<div class="calc-box">';
+        html += '<div class="line">Gross Profit: ' + data.grossProfit.toLocaleString("en-IN") + '</div>';
+        html += '<div class="line">&minus; Total Expense: ' + data.totalExpense.toLocaleString("en-IN") + '</div>';
+        html += '<div class="net">= Net Profit: ' + data.netProfit.toLocaleString("en-IN") + '</div>';
+        html += '</div>';
+
+        // Earnings
+        html += '<div class="section-title">Earnings Breakdown</div>';
+        html += '<table><tr><th>Earning</th><th class="num">Amount</th><th class="num">Profit</th></tr>';
+        EARNINGS.forEach(function (e) {
+          var amt = parseFloat(data[e.key]) || 0;
+          var profit = Math.floor(amt * e.profitMultiplier);
+          html += '<tr><td>' + e.label + '</td><td class="num">' + amt.toLocaleString("en-IN")
+            + '</td><td class="num">' + profit.toLocaleString("en-IN") + '</td></tr>';
+        });
+        html += '<tr class="total"><td>Total</td><td class="num">' + data.totalEarning.toLocaleString("en-IN")
+          + '</td><td class="num">' + data.grossProfit.toLocaleString("en-IN") + '</td></tr>';
+        html += '</table>';
+
+        // Expenses
+        html += '<div class="section-title">Expense Outer Breakdown</div>';
+        html += '<table><tr><th>Expense</th><th class="num">Amount</th></tr>';
+        EXPENSES.forEach(function (e) {
+          var amt = parseFloat(data[e.key]) || 0;
+          html += '<tr><td>' + e.label + '</td><td class="num">' + amt.toLocaleString("en-IN") + '</td></tr>';
+        });
+        html += '<tr class="total"><td>Total</td><td class="num">' + data.totalExpense.toLocaleString("en-IN") + '</td></tr>';
+        html += '</table></body></html>';
+
+        var w = window.open('', '_blank');
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+        w.onload = function () { w.print(); };
       },
 
       _buildDetailContent: function (data) {

@@ -107,13 +107,14 @@
 									<core:Item key="12" text="DEC"/>
 								</Select>
 								<Label text="Year" class="sapUiTinyMarginEnd"/>
-								<Select id="idMatrixYear" change="onMatrixFilterChange" width="100px">
+								<Select id="idMatrixYear" change="onMatrixFilterChange" width="100px" class="sapUiTinyMarginEnd">
 									<core:Item key="2023" text="2023"/>
 									<core:Item key="2024" text="2024"/>
 									<core:Item key="2025" text="2025"/>
 									<core:Item key="2026" text="2026"/>
 									<core:Item key="2027" text="2027"/>
 								</Select>
+								<Button text="Print" icon="sap-icon://print" type="Emphasized" press="onPrintMatrix"/>
 							</HBox>
 							<HBox class="sapUiTinyMarginBottom sapUiTinyMarginTop" alignItems="Center" wrapping="Wrap">
 								<Label text="Legend:" class="sapUiTinyMarginEnd" design="Bold"/>
