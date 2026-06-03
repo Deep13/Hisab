@@ -410,13 +410,15 @@ sap.ui.define(
       // ==================== PROCESS MATRIX TAB ====================
 
       _initMatrixDefaults: function () {
+        if (this._matrixInitialized) { return; }
+        this._matrixInitialized = true;
         var monthSel = this.byId("idMatrixMonth");
         var yearSel = this.byId("idMatrixYear");
-        if (!monthSel.getSelectedKey()) {
-          var currDate = new Date();
-          monthSel.setSelectedKey(("0" + (currDate.getMonth() + 1)).slice(-2));
-          yearSel.setSelectedKey(currDate.getFullYear().toString());
-        }
+        var now = new Date();
+        // Last month: if Jan (0) -> 12 (Dec); else current month index (which = prev month number)
+        var prevMonth = now.getMonth() === 0 ? 12 : now.getMonth();
+        monthSel.setSelectedKey(("0" + prevMonth).slice(-2));
+        yearSel.setSelectedKey(now.getFullYear().toString());
       },
 
       onMatrixFilterChange: function () {
@@ -466,20 +468,24 @@ sap.ui.define(
         // Group: client -> process -> {count, total}
         var clientMap = {};
         transactions.forEach(function (t) {
-          if (!t.client || !t.machineType) { return; }
-          if (!clientMap[t.client]) {
-            clientMap[t.client] = {};
+          var clientName = (t.client || "").trim();
+          if (!clientName) { return; }
+          var mt = (t.machineType || "").trim();
+          if (!clientMap[clientName]) {
+            clientMap[clientName] = {};
             processes.forEach(function (p) {
-              clientMap[t.client][p] = { count: 0, total: 0 };
+              clientMap[clientName][p] = { count: 0, total: 0 };
             });
           }
-          if (clientMap[t.client][t.machineType]) {
-            clientMap[t.client][t.machineType].count += 1;
-            clientMap[t.client][t.machineType].total += parseFloat(t.total) || 0;
+          if (mt && clientMap[clientName][mt]) {
+            clientMap[clientName][mt].count += 1;
+            clientMap[clientName][mt].total += parseFloat(t.total) || 0;
           }
         });
 
-        var clientNames = Object.keys(clientMap).sort();
+        var clientNames = Object.keys(clientMap).sort(function (a, b) {
+          return a.localeCompare(b, undefined, { sensitivity: "base" });
+        });
 
         if (clientNames.length === 0) {
           $("#processMatrixDiv").html('<p style="padding:20px;color:#888">No data for selected month</p>');
