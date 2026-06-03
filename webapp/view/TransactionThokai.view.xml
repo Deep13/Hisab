@@ -1,0 +1,80 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+	controllerName="Hisab.Hisab.controller.TransactionThokai"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+	<Page title="Create a new Thokai Transaction" showNavButton="true" navButtonPress="onpressBack"
+		titleAlignment="Center">
+		<content>
+			<HBox class="sapUiSmallMargin">
+				<VBox class="sapUiSmallMarginEnd">
+					<Label text="Select Office" design="Bold" required="true" />
+					<ComboBox id="idOffice" selectedKey="Main Office">
+						<core:Item key="Factory 01" text="Factory 01" />
+						<core:Item key="Factory 02" text="Factory 02" />
+						<core:Item key="Factory 03" text="Factory 03" />
+						<core:Item key="Factory 04" text="Factory 04" />
+					</ComboBox>
+				</VBox>
+			</HBox>
+			<VBox id="idcTxBox" class="sapUiMediumMarginEnd">
+				<!--Table
+				to get User Inputs-->
+				<Table id="idTable" headerText="Add Records" sticky="ColumnHeaders" growing="true"
+					growingThreshold="10" class="sapUiSizeCompact"
+					items="{/results}">
+					<headerToolbar>
+						<OverflowToolbar design="Transparent">
+							<Title text="Add Records" />
+							<ToolbarSpacer />
+							<Button text="Add New" icon="sap-icon://add" tooltip="Add New"
+								press="onAddRow" />
+						</OverflowToolbar>
+					</headerToolbar>
+					<columns>
+						<Column hAlign="Left">
+							<Label text="Date" required="true" />
+						</Column>
+						<Column hAlign="Left">
+							<Label text="Client" required="true" />
+						</Column>
+						<Column hAlign="Left">
+							<Label text="Quantity" required="true" />
+						</Column>
+						<Column hAlign="Left">
+							<Label text="Rate" required="true" />
+						</Column>
+					</columns>
+					<items>
+						<ColumnListItem>
+							<cells>
+								<DatePicker displayFormat="dd-MM-yyyy" valueFormat="dd/MM/yyyy"
+									value="{Date}" />
+								<Input value="{Client}" placeholder="Enter Client Name"
+									showSuggestion="true"
+									suggestionItems="{ComboModel>/Clients_results}">
+									<suggestionItems>
+										<core:Item text="{ComboModel>client}" />
+									</suggestionItems>
+								</Input>
+								<Input value="{Quantity}" type="Number" submit="onSumbit" />
+								<Input value="{Rate}" type="Number" submit="onSumbit" />
+							</cells>
+						</ColumnListItem>
+					</items>
+				</Table>
+			</VBox>
+		</content>
+		<!--Footer
+		to perform Operation : Save and Reset-->
+		<footer>
+			<OverflowToolbar id="otbFooterCPOverview">
+				<ToolbarSpacer />
+				<Button type="Reject" text="{i18n>Reset}" press="onResetTransaction" />
+				<Button type="Accept" text="{i18n>Submit}" press="onSaveTransaction">
+					<layoutData>
+						<OverflowToolbarLayoutData priority="NeverOverflow" />
+					</layoutData>
+				</Button>
+			</OverflowToolbar>
+		</footer>
+	</Page>
+</mvc:View>

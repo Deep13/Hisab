@@ -1,0 +1,61 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" controllerName="Hisab.Hisab.controller.ServiceDetail"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+	<Page showNavButton="true" navButtonPress="onpressBack">
+		<customHeader>
+			<Bar>
+			<contentLeft>
+					<Button icon="sap-icon://nav-back" press="onpressBack"/>
+				</contentLeft>
+				<contentMiddle>
+					<Title text="R&amp;D Enterprise"></Title>
+				</contentMiddle>
+					
+			</Bar>
+		</customHeader>
+		<content>
+		<VBox class="sapUiSmallMargin">
+			<Title id="office" text="{Service>/results/0/cc}"/>
+			<Title id="type" text="{Service>/results/0/type}"/>
+			<Title id="machine" text="{Service>/results/0/machineName}"/>
+		</VBox>
+		<HBox class="sapUiSmallMargin">
+		<Input placeholder="Service Name" id="newService"/>
+		<Input placeholder="Service Amount" id="newServiceAmt"/>
+			<DatePicker displayFormat="yyyy-MM-dd" id="newServiceDate" valueFormat="yyyy-MM-dd" />
+			<Button text="Add" press="onPressAdd" />
+		</HBox>
+	<Table class="sapUiLargeMarginTop" id="idProductsTable2"
+		inset="false"
+		items="{
+			path: 'Service>/results',
+			sorter: {
+				path: 'dateValue'
+			}
+		}">
+		<columns>
+            <Column>
+				<Text text="Serviced On" />
+			</Column>
+            <Column>
+				<Text text="Service Name" />
+			</Column>
+			 <Column>
+				<Text text="Service Amount" />
+			</Column>
+		</columns>
+		<items>
+			<ColumnListItem >
+				<cells>
+                        <Text
+						text="{Service>servicedOn}" />
+                        <Text
+						text="{Service>serviceName}" />
+						 <Text
+						text="{Service>Amount}" />
+				</cells>
+			</ColumnListItem>
+		</items>
+	</Table>
+		</content>
+	</Page>
+</mvc:View>

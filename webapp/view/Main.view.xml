@@ -1,0 +1,144 @@
+<mvc:View controllerName="Hisab.Hisab.controller.Main" xmlns:mvc="sap.ui.core.mvc" xmlns:core="sap.ui.core" displayBlock="true"
+	xmlns="sap.m">
+	<Shell id="shell">
+		<App id="app">
+			<pages>
+				<Page id="page" title="{i18n>title}" titleAlignment="Center">
+					<content>
+					<VBox id="VLayout" class="sapUiLargeMarginBeginEnd"></VBox>
+						<Panel width="auto" class="sapUiResponsiveMargin" accessibleRole="Region">
+							<headerToolbar>
+								<OverflowToolbar>
+									<Title text="Create Transactions"/>
+								</OverflowToolbar>
+							</headerToolbar>
+							<content>
+								<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Shaving" subheader="By Piece"
+									press="onPressTransactionShaving">
+									<TileContent>
+										<ImageContent src="sap-icon://scissors"/>
+									</TileContent>
+								</GenericTile>
+								<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Buffing" subheader="By Piece" press="onPressBuffingTransaction">
+									<TileContent>
+										<ImageContent src="sap-icon://blur"/>
+									</TileContent>
+								</GenericTile>
+								<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Milling" subheader="Hourly" press="onPressMillingTransaction">
+									<TileContent>
+										<ImageContent src="sap-icon://machine"/>
+									</TileContent>
+								</GenericTile>
+								<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Charbi" subheader="Hourly" press="onPressSofteningTransaction">
+									<TileContent>
+										<ImageContent src="sap-icon://collections-management"/>
+									</TileContent>
+								</GenericTile>
+								<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Tangan" subheader="By Lot" press="onPressTanganTransaction">
+									<TileContent>
+										<ImageContent src="sap-icon://washing-machine"/>
+									</TileContent>
+								</GenericTile>
+								<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Thokai" subheader="By Piece" press="onPressThokai">
+									<TileContent>
+										<ImageContent src="sap-icon://technical-object"/>
+									</TileContent>
+								</GenericTile>
+							</content>
+						</Panel>
+						<HBox>
+							<Panel width="auto" class="sapUiResponsiveMargin" accessibleRole="Region">
+								<headerToolbar>
+									<OverflowToolbar>
+										<Title text="Print Slips"/>
+									</OverflowToolbar>
+								</headerToolbar>
+								<content>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Labour Payment" subheader="Printed every week"
+										press="onPressLabour">
+										<TileContent>
+											<ImageContent src="sap-icon://collaborate"/>
+										</TileContent>
+									</GenericTile>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Client Payment" subheader="Printed every month"
+										press="onPressClient">
+										<TileContent>
+											<ImageContent src="sap-icon://building"/>
+										</TileContent>
+									</GenericTile>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Tagada Slip" subheader="Printed every month"
+										press="onPressTagada">
+										<TileContent>
+											<ImageContent src="sap-icon://building"/>
+										</TileContent>
+									</GenericTile>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Profit and Loss" subheader="Monthly P&amp;L"
+										press="onPressProfitLoss">
+										<TileContent>
+											<ImageContent src="sap-icon://line-chart"/>
+										</TileContent>
+									</GenericTile>
+								</content>
+							</Panel>
+							<Panel width="auto" class="sapUiResponsiveMargin" accessibleRole="Region">
+								<headerToolbar>
+									<OverflowToolbar>
+										<Title text="Analytics &amp; History"/>
+									</OverflowToolbar>
+								</headerToolbar>
+								<content>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="View Transaction History" subheader="Edit &amp; Delete"
+										press="onPressTran">
+										<TileContent>
+											<ImageContent src="sap-icon://multiselect-none"/>
+										</TileContent>
+									</GenericTile>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Analytics Dashboard" subheader="Analysis &amp; Forecast"
+										press="onPressAnalytics">
+										<TileContent>
+											<ImageContent src="sap-icon://business-objects-experience"/>
+										</TileContent>
+									</GenericTile>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Routine" subheader="Reminder" press="onPressRoutine">
+										<TileContent>
+											<ImageContent src="sap-icon://bell"/>
+										</TileContent>
+									</GenericTile>
+								</content>
+							</Panel>
+							
+						</HBox>
+						<HBox>
+						<Panel width="auto" class="sapUiResponsiveMargin" accessibleRole="Region">
+								<headerToolbar>
+									<OverflowToolbar>
+										<Title text="Master Data"/>
+									</OverflowToolbar>
+								</headerToolbar>
+								<content>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Client" subheader="Details" press="onPressClientMaster">
+										<TileContent>
+											<ImageContent src="sap-icon://customer"/>
+										</TileContent>
+									</GenericTile>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Khazana" subheader="Details" press="onPressKhazana">
+										<TileContent>
+											<ImageContent src="sap-icon://customer"/>
+										</TileContent>
+									</GenericTile>
+								</content>
+							</Panel>
+						</HBox>
+					</content>
+					<footer>
+						<OverflowToolbar>
+							<HBox alignItems="Center" alignContent="Center" justifyContent="Center" width="100%">
+								<Text text=" A RuDe Labs Production © 2020"/>
+							</HBox>
+						</OverflowToolbar>
+					</footer>
+				</Page>
+			</pages>
+		</App>
+	</Shell>
+</mvc:View>

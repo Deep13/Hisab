@@ -1,0 +1,175 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" controllerName="Hisab.Hisab.controller.Invoice"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+	<Page showNavButton="true" navButtonPress="onpressBack" class="myDivToPrint">
+		<customHeader>
+			<Bar>
+			<contentLeft>
+					<Button icon="sap-icon://nav-back" press="onpressBack"/>
+				</contentLeft>
+				<contentMiddle>
+					<Title text="R&amp;D Enterprise"></Title>
+				</contentMiddle>
+				<contentRight>
+					<Button text="Print Invoice" type="Accept" press="onPrintInvoice"/>
+				</contentRight>
+			</Bar>
+		</customHeader>
+		<content >
+			<VBox id="target">
+			<HBox alignItems="Center" alignContent="Center" justifyContent="Center" width="100%">
+				<Title level="H1" titleStyle="H1" text="{viewModel>/client}"/>
+			</HBox>
+			<HBox alignItems="Center" alignContent="Center" justifyContent="Center" width="100%">
+				<Title level="H2" text="{viewModel>/cc}"/>
+			</HBox>
+			<HBox alignItems="Center" alignContent="Center" justifyContent="Center" width="100%">
+				<Title level="H2" text="{viewModel>/month} {viewModel>/year}"/>
+			</HBox>
+			<HBox>
+				<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
+					<Title level="H1" titleStyle="H3" text=""/>
+				</VBox>
+				<VBox alignItems="Center" alignContent="Center" justifyContent="Center" width="30%">
+					<Title level="H2" titleStyle="H3" text="Total"/>
+				</VBox>
+			</HBox>
+			
+			
+			<VBox visible="{path:'viewModel>/Shaving',formatter:'.checkLength'}">
+			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiSmallMargin" width="70%">
+			<Title level="H1" titleStyle="H4" text="Shaving"/>
+			</VBox>
+			<VBox  items="{viewModel>/Shaving}">
+			<HBox class="higlight" >
+			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
+			<Title level="H1" titleStyle="H4" text="{viewModel>desc}"/>
+			</VBox>
+			<VBox alignItems="Center" alignContent="Center" justifyContent="Center" width="30%">
+					<Title level="H1" titleStyle="H4" text="{viewModel>total}"/>
+			</VBox>
+			</HBox>
+			</VBox>
+			<HBox >
+			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
+			<!-- <Title level="H1" titleStyle="H4" text="{viewModel>desc}"/> -->
+			</VBox>
+			<VBox alignItems="Center" alignContent="Center"  justifyContent="Center" width="30%">
+					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>/ShavingTotal}"/>
+			</VBox>
+			</HBox>
+			</VBox>
+
+
+
+<VBox visible="{path:'viewModel>/Buffing',formatter:'.checkLength'}">
+			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiSmallMargin" width="70%">
+			<Title level="H1" titleStyle="H4" text="Buffing"/>
+			</VBox>
+			<VBox items="{viewModel>/Buffing}">
+			<HBox class="higlight">
+			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
+			<Title level="H1" titleStyle="H4" text="{viewModel>desc}"/>
+			</VBox>
+			<VBox alignItems="Center" alignContent="Center" justifyContent="Center" width="30%">
+					<Title level="H1" titleStyle="H4" text="{viewModel>total}"/>
+			</VBox>
+			</HBox>
+			</VBox>
+
+<HBox >
+			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
+			<!-- <Title level="H1" titleStyle="H4" text="{viewModel>desc}"/> -->
+			</VBox>
+			<VBox alignItems="Center" alignContent="Center"  justifyContent="Center" width="30%">
+					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>/BuffingTotal}"/>
+			</VBox>
+</HBox >
+
+</VBox>
+
+
+<VBox visible="{path:'viewModel>/Milling',formatter:'.checkLength'}">
+			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiSmallMargin" width="70%">
+			<Title level="H1" titleStyle="H4" text="Milling"/>
+			</VBox>
+			<VBox items="{viewModel>/Milling}">
+			<HBox class="higlight" >
+			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
+			<Title level="H1" titleStyle="H4" text="{viewModel>desc}"/>
+			<Title level="H1" titleStyle="H4" text="{viewModel>/MillingLot} Lot"/>
+			</VBox>
+			<VBox alignItems="Center" alignContent="Center" justifyContent="Center" width="30%">
+					<Title level="H1" titleStyle="H4" text="{viewModel>total}"/>
+			</VBox>
+			</HBox>
+			</VBox>
+<HBox >
+<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
+			<!-- <Title level="H1" titleStyle="H4" text="{viewModel>desc}"/> -->
+			</VBox>
+			<VBox alignItems="Center" alignContent="Center"  justifyContent="Center" width="30%">
+					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>/MillingTotal}"/>
+			</VBox>
+</HBox >
+
+</VBox>
+
+<VBox visible="{path:'viewModel>/Softening',formatter:'.checkLength'}">
+			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiSmallMargin" width="70%">
+			<Title level="H1" titleStyle="H4" text="Charbi"/>
+			</VBox>
+			<VBox class="softening" items="{viewModel>/Softening}">
+			<HBox class="higlight">
+			<HBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
+			<Title class="sapUiSmallMarginEnd" level="H1" titleStyle="H4" text="{viewModel>date} "/>
+			<Title level="H1" titleStyle="H4" text="{viewModel>desc} "/>
+			</HBox>
+			<VBox alignItems="Center" alignContent="Center" justifyContent="Center" width="30%">
+					<Title level="H1" titleStyle="H4" text="{viewModel>total}"/>
+			</VBox>
+			</HBox>
+			</VBox>
+<HBox >
+<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
+			<!-- <Title level="H1" titleStyle="H4" text="{viewModel>desc}"/> -->
+			</VBox>
+			<VBox alignItems="Center" alignContent="Center"  justifyContent="Center" width="30%">
+					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>/SofteningTotal}"/>
+			</VBox>
+</HBox >
+
+</VBox>
+
+<VBox visible="{path:'viewModel>/Tangan',formatter:'.checkLength'}">
+
+			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiSmallMargin" width="70%">
+			<Title level="H1" titleStyle="H4" text="Tangan"/>
+			</VBox>
+			<VBox items="{viewModel>/Tangan}">
+			<HBox class="higlight">
+			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
+			<Title level="H1" titleStyle="H4" text="{viewModel>desc}"/>
+			</VBox>
+			<VBox alignItems="Center" alignContent="Center" justifyContent="Center" width="30%">
+					<Title level="H1" titleStyle="H4" text="{viewModel>total}"/>
+			</VBox>
+			</HBox>
+			</VBox>
+
+<HBox >
+			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
+			<!-- <Title level="H1" titleStyle="H4" text="{viewModel>desc}"/> -->
+			</VBox>
+			<VBox alignItems="Center" alignContent="Center"  justifyContent="Center" width="30%">
+					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>/TanganTotal}"/>
+			</VBox>
+</HBox >
+</VBox>
+			<OverflowToolbar>
+				<ToolbarSpacer/>
+				<Title level="H1" text="Grand Total: {viewModel>/total}"/>
+			</OverflowToolbar>
+			</VBox>
+		</content>
+	</Page>
+</mvc:View>

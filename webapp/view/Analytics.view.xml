@@ -1,0 +1,136 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" controllerName="Hisab.Hisab.controller.Analytics"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+	<Page showNavButton="true" navButtonPress="onpressBack" class="sapUiResponsiveContentPadding">
+		<customHeader>
+			<Bar>
+				<contentLeft>
+					<Button icon="sap-icon://nav-back" press="onpressBack"/>
+				</contentLeft>
+				<contentMiddle>
+					<Title text="R&amp;D Enterprise"></Title>
+				</contentMiddle>
+			</Bar>
+		</customHeader>
+		<content>
+			<IconTabBar id="idIconTabBar" select="onTabSelect" selectedKey="client">
+				<items>
+					<IconTabFilter text="Client Data" key="client" icon="sap-icon://customer">
+						<VBox id="MonthWise" class="sapUiSmallMargin">
+							<Button icon="sap-icon://nav-back" press="onRenderPL" text="Back to Months" visible="false" id="idMonth" class="sapUiTinyMarginBottom"/>
+							<core:HTML afterRendering="onRenderPL" content="&lt;div id=&quot;myPLDiv&quot; style=&quot;width:100%;min-height:400px&quot;&gt;&lt;/div&gt;"> </core:HTML>
+						</VBox>
+					</IconTabFilter>
+					<IconTabFilter text="Labour Data" key="labour" icon="sap-icon://employee">
+						<VBox id="LabourWise" class="sapUiSmallMargin">
+							<Panel headerText="All Labours Comparison" class="sapUiTinyMarginBottom" expandable="true" expanded="true">
+								<HBox class="sapUiTinyMarginBottom sapUiTinyMarginTop" alignItems="Center" wrapping="Wrap">
+									<Label text="Date Range" class="sapUiTinyMarginEnd"/>
+									<DateRangeSelection id="idLabourDateRange" change="onLabourCompareChange" displayFormat="dd/MM/yyyy" width="260px" class="sapUiTinyMarginEnd"/>
+									<Label text="Office" class="sapUiTinyMarginEnd"/>
+									<Select id="idLabourCompareOffice" change="onLabourCompareChange" width="140px" selectedKey="All">
+										<core:Item key="All" text="All"/>
+										<core:Item key="Factory 01" text="Factory 01"/>
+										<core:Item key="Factory 02" text="Factory 02"/>
+										<core:Item key="Factory 03" text="Factory 03"/>
+										<core:Item key="Factory 04" text="Factory 04"/>
+									</Select>
+								</HBox>
+								<core:HTML content="&lt;div id=&quot;labourCompareDiv&quot; style=&quot;width:100%;min-height:450px&quot;&gt;&lt;/div&gt;"/>
+							</Panel>
+							<HBox class="sapUiTinyMarginBottom sapUiMediumMarginTop" alignItems="Center" wrapping="Wrap">
+								<Label text="Labour" class="sapUiTinyMarginEnd"/>
+								<ComboBox id="idLabourCombo" selectionChange="onLabourFilterChange" placeholder="Choose a labour..." width="200px" class="sapUiTinyMarginEnd"
+									items="{LabourModel>/}">
+									<core:Item key="{LabourModel>Labor}" text="{LabourModel>Labor}" />
+								</ComboBox>
+								<Label text="Month" class="sapUiTinyMarginEnd"/>
+								<Select id="idLabourMonth" change="onLabourFilterChange" width="120px" class="sapUiTinyMarginEnd" selectedKey="All">
+									<core:Item key="All" text="All"/>
+									<core:Item key="01" text="JAN"/>
+									<core:Item key="02" text="FEB"/>
+									<core:Item key="03" text="MAR"/>
+									<core:Item key="04" text="APR"/>
+									<core:Item key="05" text="MAY"/>
+									<core:Item key="06" text="JUN"/>
+									<core:Item key="07" text="JUL"/>
+									<core:Item key="08" text="AUG"/>
+									<core:Item key="09" text="SEP"/>
+									<core:Item key="10" text="OCT"/>
+									<core:Item key="11" text="NOV"/>
+									<core:Item key="12" text="DEC"/>
+								</Select>
+								<Label text="Year" class="sapUiTinyMarginEnd"/>
+								<Select id="idLabourYear" change="onLabourFilterChange" width="100px" selectedKey="All">
+									<core:Item key="All" text="All"/>
+									<core:Item key="2023" text="2023"/>
+									<core:Item key="2024" text="2024"/>
+									<core:Item key="2025" text="2025"/>
+									<core:Item key="2026" text="2026"/>
+								</Select>
+							</HBox>
+							<HBox width="100%">
+								<VBox width="50%" class="sapUiTinyMarginEnd">
+									<Title text="Month-wise Total" level="H5" class="sapUiTinyMarginBottom"/>
+									<core:HTML content="&lt;div id=&quot;myLabourMonthDiv&quot; style=&quot;width:100%;min-height:350px&quot;&gt;&lt;/div&gt;"> </core:HTML>
+								</VBox>
+								<VBox width="50%">
+									<Title text="Week-wise Total" level="H5" class="sapUiTinyMarginBottom"/>
+									<core:HTML content="&lt;div id=&quot;myLabourWeekDiv&quot; style=&quot;width:100%;min-height:350px&quot;&gt;&lt;/div&gt;"> </core:HTML>
+								</VBox>
+							</HBox>
+						</VBox>
+					</IconTabFilter>
+					<IconTabFilter text="Process Matrix" key="matrix" icon="sap-icon://grid">
+						<VBox class="sapUiSmallMargin">
+							<HBox class="sapUiTinyMarginBottom" alignItems="Center" wrapping="Wrap">
+								<Label text="Office" class="sapUiTinyMarginEnd"/>
+								<Select id="idMatrixOffice" change="onMatrixFilterChange" width="140px" class="sapUiTinyMarginEnd" selectedKey="All">
+									<core:Item key="All" text="All"/>
+									<core:Item key="Factory 01" text="Factory 01"/>
+									<core:Item key="Factory 02" text="Factory 02"/>
+									<core:Item key="Factory 03" text="Factory 03"/>
+									<core:Item key="Factory 04" text="Factory 04"/>
+								</Select>
+								<Label text="Month" class="sapUiTinyMarginEnd"/>
+								<Select id="idMatrixMonth" change="onMatrixFilterChange" width="130px" class="sapUiTinyMarginEnd">
+									<core:Item key="01" text="JAN"/>
+									<core:Item key="02" text="FEB"/>
+									<core:Item key="03" text="MAR"/>
+									<core:Item key="04" text="APR"/>
+									<core:Item key="05" text="MAY"/>
+									<core:Item key="06" text="JUN"/>
+									<core:Item key="07" text="JUL"/>
+									<core:Item key="08" text="AUG"/>
+									<core:Item key="09" text="SEP"/>
+									<core:Item key="10" text="OCT"/>
+									<core:Item key="11" text="NOV"/>
+									<core:Item key="12" text="DEC"/>
+								</Select>
+								<Label text="Year" class="sapUiTinyMarginEnd"/>
+								<Select id="idMatrixYear" change="onMatrixFilterChange" width="100px">
+									<core:Item key="2023" text="2023"/>
+									<core:Item key="2024" text="2024"/>
+									<core:Item key="2025" text="2025"/>
+									<core:Item key="2026" text="2026"/>
+									<core:Item key="2027" text="2027"/>
+								</Select>
+							</HBox>
+							<HBox class="sapUiTinyMarginBottom sapUiTinyMarginTop" alignItems="Center" wrapping="Wrap">
+								<Label text="Legend:" class="sapUiTinyMarginEnd" design="Bold"/>
+								<HBox alignItems="Center" class="sapUiTinyMarginEnd">
+									<html:div style="width:18px;height:18px;background:#7cb342;border-radius:3px;margin-right:6px"/>
+									<Text text="Done"/>
+								</HBox>
+								<HBox alignItems="Center" class="sapUiTinyMarginEnd">
+									<html:div style="width:18px;height:18px;background:#f5f5f5;border:1px solid #ccc;border-radius:3px;margin-right:6px"/>
+									<Text text="Missing"/>
+								</HBox>
+							</HBox>
+							<core:HTML content="&lt;div id=&quot;processMatrixDiv&quot; style=&quot;width:100%;overflow-x:auto&quot;&gt;&lt;/div&gt;"/>
+						</VBox>
+					</IconTabFilter>
+				</items>
+			</IconTabBar>
+		</content>
+	</Page>
+</mvc:View>

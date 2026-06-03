@@ -1,0 +1,102 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" controllerName="Hisab.Hisab.controller.Routine"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+	<Page showNavButton="true" navButtonPress="onpressBack">
+		<customHeader>
+			<Bar>
+			<contentLeft>
+					<Button icon="sap-icon://nav-back" press="onpressBack"/>
+				</contentLeft>
+				<contentMiddle>
+					<Title text="R&amp;D Enterprise"></Title>
+				</contentMiddle>
+			</Bar>
+		</customHeader>
+		<content>
+        <Table id="idProductsTable"
+		headerText="Reminders"
+		inset="false"
+		items="{
+			path: 'Routine>/results',
+			sorter: {
+				path: 'Name'
+			}
+		}">
+		<columns>
+			<Column>
+				<Text text="Name" />
+			</Column>
+            <Column>
+				<Text text="Interval Months" />
+			</Column>
+            <Column>
+				<Text text="Last Serviced On" />
+			</Column>
+            <Column>
+				<Text text="Service expire on" />
+			</Column>
+            <Column>
+				<Text text="Serviced on?" />
+			</Column>
+		</columns>
+		<items>
+			<ColumnListItem highlight="{
+						 parts: [ 'Routine>ServicedOn', 'Routine>IntervalMonths'],
+						formatter: '.formatter.statusReminder'
+					}">
+				<cells>
+					<Text
+						text="{Routine>Name}" />
+                        <Text
+						text="{Routine>IntervalMonths}" />
+                        <Text
+						text="{
+						 path: 'Routine>ServicedOn',
+						formatter: '.formatter.serviceOn'
+					}" />
+                        <Text
+						text="{
+						 parts: [ 'Routine>ServicedOn', 'Routine>IntervalMonths'],
+						formatter: '.formatter.expiryDate'
+					}" />
+                        <HBox><DatePicker displayFormat="yyyy-MM-dd" valueFormat="yyyy-MM-dd" value="{Routine>ServicedOn}"/>
+					<Button text="Yes" press="onPressYes" /></HBox>
+				</cells>
+			</ColumnListItem>
+		</items>
+	</Table>
+	<Table class="sapUiLargeMarginTop" id="idProductsTable2"
+	headerText="Service"
+		inset="false"
+		items="{
+			path: 'Service>/results',
+			sorter: {
+				path: 'dateValue'
+			}
+		}">
+		<columns>
+		<Column>
+				<Text text="Office" />
+			</Column>
+			<Column>
+				<Text text="Machine Name" />
+			</Column>
+            <Column>
+				<Text text="Last Serviced On" />
+			</Column>
+		</columns>
+		<items>
+			<ColumnListItem type="Navigation" press="onPressItem">
+				<cells>
+					<Text
+					text="{Service>cc}" />
+					<Text
+					text="{Service>machineName}" />
+					<Text
+					text="{Service>servicedOn}" />
+				</cells>
+			</ColumnListItem>
+		</items>
+	</Table>
+		</content>
+	</Page>
+</mvc:View>

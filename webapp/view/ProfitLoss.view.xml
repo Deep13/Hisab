@@ -1,0 +1,53 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+    controllerName="Hisab.Hisab.controller.ProfitLoss"
+    xmlns:html="http://www.w3.org/1999/xhtml">
+    <Page showNavButton="true" navButtonPress="onpressBack">
+        <customHeader>
+            <Bar>
+                <contentLeft>
+                    <Button icon="sap-icon://nav-back" press="onpressBack"/>
+                </contentLeft>
+                <contentMiddle>
+                    <Title text="Profit and Loss"/>
+                </contentMiddle>
+                <contentRight>
+                    <Button text="Create" icon="sap-icon://add" type="Emphasized" press="onCreate"/>
+                </contentRight>
+            </Bar>
+        </customHeader>
+        <content>
+            <IconTabBar id="idPLTabBar" selectedKey="data" select="onTabSelect">
+                <items>
+                    <IconTabFilter text="Data" key="data" icon="sap-icon://table-view">
+                        <Table id="idPLTable" sticky="ColumnHeaders" class="sapUiSizeCompact"
+                            items="{plModel>/rows}" mode="None" itemPress="onRowPress">
+                            <columns>
+                                <Column><Label text="Month"/></Column>
+                                <Column hAlign="Right"><Label text="Total Earning"/></Column>
+                                <Column hAlign="Right"><Label text="Total Expenses"/></Column>
+                                <Column hAlign="Right"><Label text="Gross Profit"/></Column>
+                                <Column hAlign="Right"><Label text="Net Profit"/></Column>
+                            </columns>
+                            <items>
+                                <ColumnListItem type="Active">
+                                    <cells>
+                                        <Text text="{plModel>monthLabel}"/>
+                                        <Text text="{plModel>totalEarning}"/>
+                                        <Text text="{plModel>totalExpense}"/>
+                                        <Text text="{plModel>grossProfit}"/>
+                                        <ObjectStatus text="{plModel>netProfit}" state="{plModel>netProfitState}"/>
+                                    </cells>
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </IconTabFilter>
+                    <IconTabFilter text="Chart" key="chart" icon="sap-icon://bar-chart">
+                        <VBox class="sapUiSmallMargin">
+                            <core:HTML content="&lt;div id=&quot;plChartDiv&quot; style=&quot;width:100%;min-height:450px&quot;&gt;&lt;/div&gt;"/>
+                        </VBox>
+                    </IconTabFilter>
+                </items>
+            </IconTabBar>
+        </content>
+    </Page>
+</mvc:View>

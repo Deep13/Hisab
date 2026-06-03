@@ -1,0 +1,48 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" controllerName="Hisab.Hisab.controller.MasterClient"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+	<Page title="Create a new Shaving Transaction" showNavButton="true" navButtonPress="onpressBack" titleAlignment="Center">
+		<content>
+			<HBox class="sapUiSmallMargin">
+				<VBox class="sapUiSmallMarginEnd">
+					<Label text="Enter the Client Name" design="Bold" required="true"/>
+					<ComboBox id="idLabor" items="{ComboModel>/results}" change="onChangeSelectionClient">
+						<items>
+							<core:Item key="{ComboModel>id}" text="{ComboModel>client}"/>
+						</items>
+					</ComboBox>
+				</VBox>
+			</HBox>
+			<VBox id="idcTxBox" class="sapUiMediumMarginEnd">
+				<!--Table to get User Inputs-->
+				<Table id="idTable" headerText="Add Records" sticky="ColumnHeaders" growing="true" growingThreshold="10" class="sapUiSizeCompact"
+					items="{detailsModel>/results}">
+					<columns>
+						<Column  hAlign="Left">
+							<Label text="id" required="true"/>
+						</Column>
+						<Column hAlign="Left">
+							<Label text="Client" required="true"/>
+						</Column>
+                        <Column hAlign="Left">
+							<Label text="New Name" required="true"/>
+						</Column>
+						<Column hAlign="Left">
+							<Label text=""/>
+						</Column>
+					</columns>
+					<items>
+						<ColumnListItem>
+							<cells>
+                                <Text text="{detailsModel>id}"/>
+                                <Text text="{detailsModel>client}"/>
+								<Input  value="{detailsModel>newname}"/>
+								<!-- <Input value="{Rate}" type="Number" submit="onSumbit"/> -->
+								<Button type="Accept" text="{i18n>Submit}" press="onSaveClient"/>
+							</cells>
+						</ColumnListItem>
+					</items>
+				</Table>
+			</VBox>
+		</content>
+	</Page>
+</mvc:View>
