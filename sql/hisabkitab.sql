@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.1
+-- version 5.2.0
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1
--- Generation Time: Jul 02, 2026 at 11:21 AM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.0.30
+-- Host: localhost
+-- Generation Time: Jul 02, 2026 at 01:31 PM
+-- Server version: 10.4.27-MariaDB
+-- PHP Version: 8.2.0
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -41,6 +41,9 @@ CREATE TABLE `clienttransaction` (
 --
 
 INSERT INTO `clienttransaction` (`Date`, `Client`, `CC`, `Hours`, `Rate`, `Total`) VALUES
+(NULL, 'SAP', NULL, NULL, NULL, NULL),
+(NULL, 'Sharp', NULL, NULL, NULL, NULL),
+(NULL, 'New', NULL, NULL, NULL, NULL),
 (NULL, 'SAP', NULL, NULL, NULL, NULL),
 (NULL, 'Sharp', NULL, NULL, NULL, NULL),
 (NULL, 'New', NULL, NULL, NULL, NULL);
@@ -103,6 +106,9 @@ CREATE TABLE `labortransaction` (
 --
 
 INSERT INTO `labortransaction` (`Labor`, `Date`, `Client`, `Quantity`, `Machine`, `Type`, `Rate`, `Total`, `Status`) VALUES
+('Deepak', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+('Rudra', '16/11/2020', 'Sharp', 100, 'A', 'A', 120, 12000, 'Paid'),
+('Babu5', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 ('Deepak', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 ('Rudra', '16/11/2020', 'Sharp', 100, 'A', 'A', 120, 12000, 'Paid'),
 ('Babu5', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
@@ -711,7 +717,28 @@ CREATE TABLE `profit_loss` (
 --
 
 INSERT INTO `profit_loss` (`id`, `month`, `year`, `shaving`, `buffing`, `charbi`, `milling`, `tangan`, `electric_bill`, `munshi`, `churi`, `mobil`, `buff_paper`, `bhussi`, `maintenance`, `v_belt`, `miscellaneous`) VALUES
-(2, '05', '2026', 267182.00, 108994.00, 101400.00, 41850.00, 10400.00, 60000.00, 25000.00, 15500.00, 3600.00, 1800.00, 24500.00, 43352.00, 3638.00, 2998.00);
+(2, '05', '2026', '267182.00', '108994.00', '101400.00', '41850.00', '10400.00', '60000.00', '25000.00', '15500.00', '3600.00', '1800.00', '24500.00', '43352.00', '3638.00', '2998.00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `rate_config`
+--
+
+CREATE TABLE `rate_config` (
+  `machineType` varchar(50) NOT NULL,
+  `rate` float NOT NULL DEFAULT 0,
+  `base` float NOT NULL DEFAULT 0,
+  `free_qty` float NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `rate_config`
+--
+
+INSERT INTO `rate_config` (`machineType`, `rate`, `base`, `free_qty`) VALUES
+('Milling', 90, 0, 0),
+('Softening', 100, 400, 3);
 
 -- --------------------------------------------------------
 
@@ -63774,9 +63801,9 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-06-17 07:09:51', '11/06/2026', 'Ramesh Rai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-17 07:10:01', '11/06/2026', 'roushan jk3', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-17 07:10:15', '11/06/2026', 'Govinda ', 'Factory 03', 90, 450, '', 5, 'Milling', NULL, NULL, 6, 2026),
-('2026-06-17 07:10:25', '12/06/2026', 'roushan jk3', 'Factory 03', 90, 315, '', 3, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-17 07:10:25', '12/06/2026', 'roushan jk3', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-17 07:10:32', '13/06/2026', 'roushan jk3', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
-('2026-06-17 07:10:38', '13/06/2026', 'Rajendra Ram', 'Factory 03', 90, 585, '', 6, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-17 07:10:38', '13/06/2026', 'Rajendra Ram', 'Factory 03', 90, 540, '', 6, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-17 07:10:45', '14/06/2026', 'Manoj Ram (A)', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-17 07:10:49', '14/06/2026', 'Manoj Ram (A)', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-17 07:10:56', '15/06/2026', 'Shahid Bhai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
@@ -63797,8 +63824,8 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-06-17 07:12:49', '03/06/2026', 'Shahid Bhai', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:12:55', '03/06/2026', 'Vinay Ram', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:13:01', '03/06/2026', 'Ramesh Rai', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-17 07:13:09', '04/06/2026', 'Pankaj Master', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-17 07:13:11', '04/06/2026', 'Pankaj Master', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 07:13:09', '04/06/2026', 'Pankaj Master', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 07:13:11', '04/06/2026', 'Pankaj Master', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:13:20', '04/06/2026', 'roushan jk3', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:13:24', '04/06/2026', 'roushan jk3', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:13:31', '05/06/2026', 'Manoj Ram (A)', 'Factory 03', 100, 400, '', 3, 'Softening', NULL, NULL, 6, 2026),
@@ -63807,7 +63834,7 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-06-17 07:13:54', '05/06/2026', 'roushan jk3', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:14:00', '05/06/2026', 'Ramesh Rai', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:14:07', '06/06/2026', 'Shahid Bhai', 'Factory 03', 100, 400, '', 3, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-17 07:14:14', '06/06/2026', 'roushan jk3', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 07:14:14', '06/06/2026', 'roushan jk3', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:14:21', '06/06/2026', 'sambhu cash', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:14:27', '06/06/2026', 'Mithun Ram', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:14:36', '07/06/2026', 'roushan jk3', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
@@ -63822,15 +63849,15 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-06-17 07:15:42', '10/06/2026', 'Vinay Ram', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:15:50', '10/06/2026', 'Dilip Ram Cash', 'Factory 03', 100, 400, '', 3, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:15:57', '10/06/2026', 'Vinay Ram', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-17 07:16:05', '11/06/2026', 'Rajendra Ram', 'Factory 03', 100, 550, '', 4, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 07:16:05', '11/06/2026', 'Rajendra Ram', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:16:11', '11/06/2026', 'Ramesh Rai', 'Factory 03', 100, 1100, '', 10, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:16:20', '11/06/2026', 'roushan jk3', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:16:29', '12/06/2026', 'Vinay Ram', 'Factory 03', 100, 1100, '', 10, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:16:35', '12/06/2026', 'Shahid Bhai', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-17 07:16:43', '12/06/2026', 'Shahid Bhai', 'Factory 03', 100, 550, '', 4, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 07:16:43', '12/06/2026', 'Shahid Bhai', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:16:48', '12/06/2026', 'Ramesh Rai', 'Factory 03', 100, 1000, '', 9, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:16:55', '12/06/2026', 'Vinay Ram', 'Factory 03', 100, 1000, '', 9, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-17 07:17:06', '13/06/2026', 'Shahansha Bhai', 'Factory 03', 100, 750, '', 6, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 07:17:06', '13/06/2026', 'Shahansha Bhai', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:17:12', '13/06/2026', 'Shahansha Bhai', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:17:34', '14/06/2026', 'Manoj Ram (A)', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 07:17:42', '13/06/2026', 'Ramesh Rai', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
@@ -63939,7 +63966,7 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-06-17 08:00:55', '14/06/2026', 'Govinda ', 'Factory 04', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 08:01:03', '15/06/2026', 'Istiyaque ', 'Factory 04', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 08:01:09', '16/06/2026', 'Istiyaque ', 'Factory 04', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-17 08:01:17', '15/06/2026', 'Bobby Da', 'Factory 04', 100, 850, '', 7, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 08:01:17', '15/06/2026', 'Bobby Da', 'Factory 04', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 08:01:25', '15/06/2026', 'Lalbabu Ram', 'Factory 04', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 08:01:31', '15/06/2026', 'Bobby Da', 'Factory 04', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-17 08:01:37', '15/06/2026', 'Istiyaque ', 'Factory 04', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
@@ -64064,20 +64091,20 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-06-20 07:20:12', '16/06/2026', 'mukesh cash', 'Factory 03', 4, 172, 'Deepak (buff)', 43, 'Buffing', NULL, NULL, 6, 2026),
 ('2026-06-20 07:20:15', '16/06/2026', 'mukesh cash', 'Factory 03', 7, 1008, 'Deepak (buff)', 144, 'Buffing', NULL, NULL, 6, 2026),
 ('2026-06-20 07:20:26', '17/06/2026', 'roushan jk3', 'Factory 03', 18.5, 1295, 'Deepak (buff)', 70, 'Buffing', NULL, NULL, 6, 2026),
-('2026-06-20 07:21:10', '15/06/2026', 'Ramesh Rai', 'Factory 03', 90, 315, '', 3, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-20 07:21:10', '15/06/2026', 'Ramesh Rai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-20 07:21:15', '16/06/2026', 'Ramesh Rai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-20 07:21:19', '16/06/2026', 'Ramesh Rai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-20 07:21:26', '17/06/2026', 'Rajendra Ram', 'Factory 03', 90, 630, '', 7, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-20 07:21:31', '17/06/2026', 'Shahid Bhai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-20 07:21:34', '17/06/2026', 'Shahid Bhai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
-('2026-06-20 07:21:40', '17/06/2026', 'Mithun Ram', 'Factory 03', 90, 855, '', 9, 'Milling', NULL, NULL, 6, 2026),
-('2026-06-20 07:22:08', '16/06/2026', 'Vinay Ram', 'Factory 03', 100, 850, '', 7, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 07:21:40', '17/06/2026', 'Mithun Ram', 'Factory 03', 90, 810, '', 9, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-20 07:22:08', '16/06/2026', 'Vinay Ram', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 07:22:13', '16/06/2026', 'Rajendra Ram', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 07:22:19', '16/06/2026', 'lalba ', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-20 07:22:26', '16/06/2026', 'Manoj Ram (A)', 'Factory 03', 100, 550, '', 4, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 07:22:26', '16/06/2026', 'Manoj Ram (A)', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 07:22:32', '16/06/2026', 'Shahid Bhai', 'Factory 03', 100, 400, '', 3, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 07:22:38', '17/06/2026', 'Mustak', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-20 07:22:44', '17/06/2026', 'lalba ', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 07:22:44', '17/06/2026', 'lalba ', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 07:22:50', '17/06/2026', 'Ramesh Rai', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 11:58:22', '19/06/2026', 'Shivkumar Ram', 'Factory 03', 3.5, 798, 'Nunu Ram', 228, 'Shaving', NULL, NULL, 6, 2026),
 ('2026-06-20 11:59:00', '19/06/2026', 'Shivkumar Ram', 'Factory 03', 6, 636, 'Nunu Ram', 106, 'Shaving', NULL, NULL, 6, 2026),
@@ -64228,19 +64255,19 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-06-20 13:19:47', '20/06/2026', 'pintu shaw', 'Factory 04', 90, 360, '', 4, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-20 13:19:50', '20/06/2026', 'pintu shaw', 'Factory 04', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-20 13:19:55', '20/06/2026', 'sahnabaj', 'Factory 04', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
-('2026-06-20 13:20:56', '16/06/2026', 'sanjeev', 'Factory 04', 90, 360, '', 4, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-20 13:21:06', '16/06/2026', 'sahnabaj', 'Factory 04', 90, 360, '', 4, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-20 13:22:04', '16/06/2026', 'Bobby Da', 'Factory 04', 90, 720, '', 8, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 13:20:56', '16/06/2026', 'sanjeev', 'Factory 04', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 13:21:06', '16/06/2026', 'sahnabaj', 'Factory 04', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 13:22:04', '16/06/2026', 'Bobby Da', 'Factory 04', 100, 900, '', 8, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 13:22:12', '17/06/2026', 'Bindeshwar Ram ', 'Factory 04', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-20 13:23:45', '17/06/2026', 'Bindeshwar Ram ', 'Factory 04', 100, 400, '', 3, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 13:23:51', '17/06/2026', 'Gangesh Ram', 'Factory 04', 100, 400, '', 3, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 13:23:57', '17/06/2026', 'sahnabaj', 'Factory 04', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 13:24:02', '18/06/2026', 'sahnabaj', 'Factory 04', 100, 900, '', 8, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-20 13:24:09', '18/06/2026', 'Ramprit Ram', 'Factory 04', 100, 450, '', 3, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 13:24:09', '18/06/2026', 'Ramprit Ram', 'Factory 04', 100, 400, '', 3, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 13:24:16', '17/06/2026', 'Bobby Da', 'Factory 04', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 13:24:23', '18/06/2026', 'Bobby Da', 'Factory 04', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 13:24:33', '18/06/2026', 'sahnabaj', 'Factory 04', 100, 1100, '', 10, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-20 13:24:44', '18/06/2026', 'Ramprit Ram', 'Factory 04', 100, 450, '', 3, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 13:24:44', '18/06/2026', 'Ramprit Ram', 'Factory 04', 100, 400, '', 3, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 13:24:50', '18/06/2026', 'Bobby Da', 'Factory 04', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-20 13:24:59', '19/06/2026', 'Lalbabu Ram', 'Factory 04', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 07:13:37', '23/06/2026', 'Ashok Ram (Tiger)', 'Factory 04', 15, 60, 'Ashok Ram', 4, 'Shaving', NULL, NULL, 6, 2026),
@@ -64308,9 +64335,9 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-06-25 09:07:20', '22/06/2026', 'Ramesh Rai', 'Factory 03', 10, 260, 'Deepak (buff)', 26, 'Buffing', NULL, NULL, 6, 2026),
 ('2026-06-25 09:07:28', '23/06/2026', 'Shahid Bhai', 'Factory 03', 3, 1200, 'Deepak (buff)', 400, 'Buffing', NULL, NULL, 6, 2026),
 ('2026-06-25 09:07:34', '24/06/2026', 'Shahid Bhai', 'Factory 03', 3, 1200, 'Deepak (buff)', 400, 'Buffing', NULL, NULL, 6, 2026),
-('2026-06-25 09:08:17', '18/06/2026', 'Ramesh Rai', 'Factory 03', 90, 585, '', 6, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-25 09:08:17', '18/06/2026', 'Ramesh Rai', 'Factory 03', 90, 540, '', 6, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-25 09:08:24', '18/06/2026', 'Shahid Bhai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
-('2026-06-25 09:08:31', '18/06/2026', 'roushan jk3', 'Factory 03', 90, 495, '', 5, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-25 09:08:31', '18/06/2026', 'roushan jk3', 'Factory 03', 90, 450, '', 5, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-25 09:08:38', '19/06/2026', 'Shahid Bhai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-25 09:08:45', '19/06/2026', 'Rajendra Ram', 'Factory 03', 90, 540, '', 6, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-25 09:09:07', '19/06/2026', 'Ramesh Rai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
@@ -64330,23 +64357,23 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-06-25 09:10:39', '24/06/2026', 'Shahid Bhai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-25 09:45:56', '17/06/2026', 'Vinay Ram', 'Factory 03', 100, 900, '', 8, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:45:59', '17/06/2026', 'Vinay Ram', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-25 09:46:51', '17/06/2026', 'lalba ', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-25 09:46:51', '17/06/2026', 'lalba ', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:46:58', '17/06/2026', 'Ramesh Rai', 'Factory 03', 100, 900, '', 8, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:47:16', '18/06/2026', 'Vinay Ram', 'Factory 03', 100, 900, '', 8, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:47:19', '18/06/2026', 'Vinay Ram', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-25 09:47:27', '18/06/2026', 'Mustak', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-25 09:47:38', '18/06/2026', 'Ramesh Rai', 'Factory 03', 100, 850, '', 7, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-25 09:47:27', '18/06/2026', 'Mustak', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-25 09:47:38', '18/06/2026', 'Ramesh Rai', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:47:48', '18/06/2026', 'Rajendra Ram', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:48:00', '19/06/2026', 'Shivkumar Ram[S.K]', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:48:06', '19/06/2026', 'Shahid Bhai', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:48:13', '19/06/2026', 'roushan jk3', 'Factory 03', 100, 900, '', 8, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-25 09:48:20', '20/06/2026', 'Laltu Ram', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-25 09:48:20', '20/06/2026', 'Laltu Ram', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:48:24', '20/06/2026', 'Rajendra Ram', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:48:31', '20/06/2026', 'Vinay Ram', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:48:37', '21/06/2026', 'Mustak', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:48:41', '21/06/2026', 'Mustak', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-25 09:48:48', '23/06/2026', 'Manoj Ram (A)', 'Factory 03', 100, 550, '', 4, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-25 09:48:59', '23/06/2026', 'Ramesh Rai', 'Factory 03', 100, 850, '', 7, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-25 09:48:48', '23/06/2026', 'Manoj Ram (A)', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-25 09:48:59', '23/06/2026', 'Ramesh Rai', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:49:05', '23/06/2026', 'Shahid Bhai', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:49:11', '23/06/2026', 'lalba ', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-25 09:49:18', '24/06/2026', 'Shahid Bhai', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
@@ -64451,14 +64478,14 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-06-29 07:27:58', '27/06/2026', 'Ashok Ram (A) Cash', 'Factory 03', 90, 540, '', 6, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-29 07:28:06', '27/06/2026', 'Sunil Cash', 'Factory 03', 90, 360, '', 4, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-29 07:28:45', '28/06/2026', 'Shahid Bhai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
-('2026-06-29 07:29:01', '28/06/2026', 'Shivkumar Ram', 'Factory 03', 90, 495, '', 5, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-29 07:29:01', '28/06/2026', 'Shivkumar Ram', 'Factory 03', 90, 450, '', 5, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-29 07:30:36', '25/06/2026', 'Laltu Ram', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-29 07:30:46', '25/06/2026', 'Manoj Ram (A)', 'Factory 03', 100, 500, '', 4, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-29 07:30:54', '25/06/2026', 'Vinay Ram', 'Factory 03', 100, 900, '', 8, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-29 07:31:01', '25/06/2026', 'Shivkumar Ram', 'Factory 03', 100, 850, '', 7, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-29 07:31:01', '25/06/2026', 'Shivkumar Ram', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-29 07:31:11', '26/06/2026', 'Vinay Ram', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-29 07:31:22', '26/06/2026', 'Shivkumar Ram', 'Factory 03', 100, 850, '', 7, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-29 07:31:30', '26/06/2026', 'Mithun Ram', 'Factory 03', 100, 750, '', 6, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-29 07:31:22', '26/06/2026', 'Shivkumar Ram', 'Factory 03', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-29 07:31:30', '26/06/2026', 'Mithun Ram', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-29 07:31:39', '27/06/2026', 'Vinay Ram', 'Factory 03', 100, 900, '', 8, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-29 07:31:51', '27/06/2026', 'roushan jk3', 'Factory 03', 100, 600, '', 5, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-29 07:31:59', '27/06/2026', 'Shivkumar Ram[S.K]', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026);
@@ -64519,14 +64546,14 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-06-29 09:10:31', '26/06/2026', 'pintu shaw', 'Factory 04', 3, 105, 'Rameshwar Ram [Buff]', 35, 'Buffing', NULL, NULL, 6, 2026),
 ('2026-06-29 09:11:10', '23/06/2026', 'Kalu Ramesh', 'Factory 04', 90, 450, '', 5, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-29 09:11:20', '24/06/2026', 'Subodh Ram', 'Factory 04', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
-('2026-06-29 09:11:28', '25/06/2026', 'Janak Ram', 'Factory 04', 90, 315, '', 3, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-29 09:11:28', '25/06/2026', 'Janak Ram', 'Factory 04', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-29 09:11:34', '25/06/2026', 'sahnabaj', 'Factory 04', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-29 09:11:39', '26/06/2026', 'sahnabaj', 'Factory 04', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-29 09:11:44', '26/06/2026', 'Istiyaque ', 'Factory 04', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-29 09:11:52', '27/06/2026', 'Ashok Ram (Tiger)', 'Factory 04', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-29 09:11:56', '27/06/2026', 'Istiyaque ', 'Factory 04', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-06-29 09:12:19', '23/06/2026', 'sahnabaj', 'Factory 04', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
-('2026-06-29 09:12:26', '23/06/2026', 'Ashok Ram (Tiger)', 'Factory 04', 100, 950, '', 8, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-29 09:12:26', '23/06/2026', 'Ashok Ram (Tiger)', 'Factory 04', 100, 900, '', 8, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-29 09:12:34', '24/06/2026', 'Pappu Roy', 'Factory 04', 100, 400, '', 3, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-29 09:12:41', '24/06/2026', 'Bobby Da', 'Factory 04', 100, 1000, '', 9, 'Softening', NULL, NULL, 6, 2026),
 ('2026-06-29 09:12:46', '25/06/2026', 'Bobby Da', 'Factory 04', 100, 800, '', 7, 'Softening', NULL, NULL, 6, 2026),
@@ -64554,7 +64581,7 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-07-01 05:27:46', '30/06/2026', 'roushan jk3', 'Factory 03', 16, 144, 'Vinay Ram', 9, 'Shaving', NULL, NULL, 6, 2026),
 ('2026-07-01 05:27:57', '30/06/2026', 'roushan jk3', 'Factory 03', 10, 760, 'Vinay Ram', 76, 'Shaving', NULL, NULL, 6, 2026),
 ('2026-07-01 05:28:07', '30/06/2026', 'roushan jk3', 'Factory 03', 8, 776, 'Vinay Ram', 97, 'Shaving', NULL, NULL, 6, 2026),
-('2026-07-01 05:29:35', '29/06/2026', 'Shivkumar Ram', 'Factory 03', 90, 495, '', 5, 'Milling', NULL, NULL, 6, 2026),
+('2026-07-01 05:29:35', '29/06/2026', 'Shivkumar Ram', 'Factory 03', 90, 450, '', 5, 'Milling', NULL, NULL, 6, 2026),
 ('2026-07-01 05:30:30', '29/06/2026', 'Shahid Bhai', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
 ('2026-07-01 05:30:38', '29/06/2026', 'Shahid Bhai', 'Factory 03', 90, 540, '', 6, 'Milling', NULL, NULL, 6, 2026),
 ('2026-07-01 05:31:52', '30/06/2026', 'Manoj Ram (A)', 'Factory 03', 90, 270, '', 3, 'Milling', NULL, NULL, 6, 2026),
@@ -64574,7 +64601,7 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-07-01 07:21:29', '30/06/2026', 'Sambhu Ram', 'Factory 03', 4, 412, 'Mahesh buff', 103, 'Buffing', NULL, NULL, 6, 2026),
 ('2026-07-01 07:22:41', '28/06/2026', 'Shivkumar Ram[S.K]', 'Factory 03', 4, 360, 'Rameshwar Ram [Buff]', 90, 'Buffing', NULL, NULL, 6, 2026),
 ('2026-07-01 07:22:58', '30/06/2026', 'Shahid Bhai', 'Factory 03', 3, 1275, 'Rameshwar Ram [Buff]', 425, 'Buffing', NULL, NULL, 6, 2026),
-('2026-07-01 07:24:09', '29/06/2026', 'Ramesh Rai', 'Factory 03', 100, 750, '', 6, 'Softening', NULL, NULL, 6, 2026),
+('2026-07-01 07:24:09', '29/06/2026', 'Ramesh Rai', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
 ('2026-07-01 07:24:42', '30/06/2026', 'roushan jk3', 'Factory 03', 100, 400, '', 3, 'Softening', NULL, NULL, 6, 2026),
 ('2026-07-01 07:24:47', '30/06/2026', 'roushan jk3', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
 ('2026-07-01 07:25:58', '30/06/2026', 'Sambhu Ram', 'Factory 03', 90, 630, '', 7, 'Milling', NULL, NULL, 6, 2026),
@@ -64613,8 +64640,70 @@ INSERT INTO `transaction` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, 
 ('2026-07-02 08:20:02', '30/06/2026', 'Rajendra Ram', 'Factory 03', 100, 400, '', 3, 'Softening', NULL, NULL, 6, 2026),
 ('2026-07-02 08:29:26', '30/06/2026', 'Rajendra Ram', 'Factory 03', 100, 700, '', 6, 'Softening', NULL, NULL, 6, 2026),
 ('2026-07-02 08:38:44', '30/06/2026', 'Govinda ', 'Factory 03', 400, 400, '', 1, 'Tangan', NULL, NULL, 6, 2026),
-('2026-07-02 08:38:45', '30/06/2026', 'Govinda ', 'Factory 03', 400, 400, '', 1, 'Tangan', NULL, NULL, 6, 2026),
-('2026-07-02 09:17:42', '02/07/2026', 'ajit ram', 'Factory 02', 100, 700, '', 6, 'Softening', NULL, NULL, 7, 2026);
+('2026-07-02 08:38:45', '30/06/2026', 'Govinda ', 'Factory 03', 400, 400, '', 1, 'Tangan', NULL, NULL, 6, 2026);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `transaction_bak_20260702`
+--
+
+CREATE TABLE `transaction_bak_20260702` (
+  `dateTime` timestamp NOT NULL DEFAULT current_timestamp(),
+  `date` text DEFAULT NULL,
+  `client` text DEFAULT NULL,
+  `cc` text DEFAULT NULL,
+  `rate` float DEFAULT NULL,
+  `total` int(11) DEFAULT NULL,
+  `labour` text DEFAULT NULL,
+  `quantity` float DEFAULT NULL,
+  `machineType` text DEFAULT NULL,
+  `hours` int(11) DEFAULT NULL,
+  `lot` int(11) DEFAULT NULL,
+  `month` int(2) DEFAULT NULL,
+  `year` int(4) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `transaction_bak_20260702`
+--
+
+INSERT INTO `transaction_bak_20260702` (`dateTime`, `date`, `client`, `cc`, `rate`, `total`, `labour`, `quantity`, `machineType`, `hours`, `lot`, `month`, `year`) VALUES
+('2026-06-17 07:10:25', '12/06/2026', 'roushan jk3', 'Factory 03', 90, 315, '', 3, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-17 07:10:38', '13/06/2026', 'Rajendra Ram', 'Factory 03', 90, 585, '', 6, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-17 07:13:09', '04/06/2026', 'Pankaj Master', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 07:13:11', '04/06/2026', 'Pankaj Master', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 07:14:14', '06/06/2026', 'roushan jk3', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 07:16:05', '11/06/2026', 'Rajendra Ram', 'Factory 03', 100, 550, '', 4, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 07:16:43', '12/06/2026', 'Shahid Bhai', 'Factory 03', 100, 550, '', 4, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 07:17:06', '13/06/2026', 'Shahansha Bhai', 'Factory 03', 100, 750, '', 6, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-17 08:01:17', '15/06/2026', 'Bobby Da', 'Factory 04', 100, 850, '', 7, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 07:21:10', '15/06/2026', 'Ramesh Rai', 'Factory 03', 90, 315, '', 3, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-20 07:21:40', '17/06/2026', 'Mithun Ram', 'Factory 03', 90, 855, '', 9, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-20 07:22:08', '16/06/2026', 'Vinay Ram', 'Factory 03', 100, 850, '', 7, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 07:22:26', '16/06/2026', 'Manoj Ram (A)', 'Factory 03', 100, 550, '', 4, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 07:22:44', '17/06/2026', 'lalba ', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 13:20:56', '16/06/2026', 'sanjeev', 'Factory 04', 90, 360, '', 4, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 13:21:06', '16/06/2026', 'sahnabaj', 'Factory 04', 90, 360, '', 4, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 13:22:04', '16/06/2026', 'Bobby Da', 'Factory 04', 90, 720, '', 8, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 13:24:09', '18/06/2026', 'Ramprit Ram', 'Factory 04', 100, 450, '', 3, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-20 13:24:44', '18/06/2026', 'Ramprit Ram', 'Factory 04', 100, 450, '', 3, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-25 09:08:17', '18/06/2026', 'Ramesh Rai', 'Factory 03', 90, 585, '', 6, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-25 09:08:31', '18/06/2026', 'roushan jk3', 'Factory 03', 90, 495, '', 5, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-25 09:46:51', '17/06/2026', 'lalba ', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-25 09:47:27', '18/06/2026', 'Mustak', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-25 09:47:38', '18/06/2026', 'Ramesh Rai', 'Factory 03', 100, 850, '', 7, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-25 09:48:20', '20/06/2026', 'Laltu Ram', 'Factory 03', 100, 650, '', 5, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-25 09:48:48', '23/06/2026', 'Manoj Ram (A)', 'Factory 03', 100, 550, '', 4, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-25 09:48:59', '23/06/2026', 'Ramesh Rai', 'Factory 03', 100, 850, '', 7, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-29 07:29:01', '28/06/2026', 'Shivkumar Ram', 'Factory 03', 90, 495, '', 5, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-29 07:31:01', '25/06/2026', 'Shivkumar Ram', 'Factory 03', 100, 850, '', 7, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-29 07:31:22', '26/06/2026', 'Shivkumar Ram', 'Factory 03', 100, 850, '', 7, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-29 07:31:30', '26/06/2026', 'Mithun Ram', 'Factory 03', 100, 750, '', 6, 'Softening', NULL, NULL, 6, 2026),
+('2026-06-29 09:11:28', '25/06/2026', 'Janak Ram', 'Factory 04', 90, 315, '', 3, 'Milling', NULL, NULL, 6, 2026),
+('2026-06-29 09:12:26', '23/06/2026', 'Ashok Ram (Tiger)', 'Factory 04', 100, 950, '', 8, 'Softening', NULL, NULL, 6, 2026),
+('2026-07-01 05:29:35', '29/06/2026', 'Shivkumar Ram', 'Factory 03', 90, 495, '', 5, 'Milling', NULL, NULL, 6, 2026),
+('2026-07-01 07:24:09', '29/06/2026', 'Ramesh Rai', 'Factory 03', 100, 750, '', 6, 'Softening', NULL, NULL, 6, 2026);
 
 --
 -- Indexes for dumped tables
@@ -64644,6 +64733,12 @@ ALTER TABLE `masterlabor`
 ALTER TABLE `profit_loss`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_month` (`month`,`year`);
+
+--
+-- Indexes for table `rate_config`
+--
+ALTER TABLE `rate_config`
+  ADD PRIMARY KEY (`machineType`);
 
 --
 -- Indexes for table `routine`
