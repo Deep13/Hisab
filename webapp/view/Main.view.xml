@@ -126,6 +126,11 @@
 											<ImageContent src="sap-icon://customer"/>
 										</TileContent>
 									</GenericTile>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Rate Settings" subheader="Fixed rates" press="onPressRateSettings">
+										<TileContent>
+											<ImageContent src="sap-icon://settings"/>
+										</TileContent>
+									</GenericTile>
 								</content>
 							</Panel>
 						</HBox>

@@ -57,6 +57,10 @@ sap.ui.define(
         this.oRouter.navTo("TransactionSoftening");
       },
 
+      onPressRateSettings: function (oEvent) {
+        this.oRouter.navTo("RateSettings");
+      },
+
       onPressTanganTransaction: function (oEvent) {
         this.oRouter.navTo("TransactionTangan");
       },

@@ -32,7 +32,9 @@ $allowedMethods = [
     'getKhazana',
     'getLabourAnalytics',
     'getProfitLoss',
-    'insertProfitLoss'
+    'insertProfitLoss',
+    'getRates',
+    'updateRate'
 ];
 
 $method = isset($_POST["method"]) ? $_POST["method"] : '';
@@ -86,6 +88,48 @@ function getPostData() {
         exit;
     }
     return $obj;
+}
+
+// --- Rate configuration (single source of truth for pricing) ---
+
+// Returns [ 'Softening' => ['rate'=>..,'base'=>..,'free_qty'=>..], ... ]
+function getRateConfig($conn) {
+    static $cache = null;
+    if ($cache !== null) {
+        return $cache;
+    }
+    $cache = [];
+    $result = @$conn->query("SELECT machineType, rate, base, free_qty FROM rate_config");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $cache[$row['machineType']] = [
+                'rate' => (float)$row['rate'],
+                'base' => (float)$row['base'],
+                'free_qty' => (float)$row['free_qty'],
+            ];
+        }
+    }
+    return $cache;
+}
+
+// Authoritative pricing. For any machineType present in rate_config the total is
+// derived from config and the client-supplied rate/total are IGNORED. Returns
+// ['rate'=>float, 'total'=>float]. For unconfigured types, falls back to the
+// client-supplied rate * quantity (legacy behaviour).
+function priceTransaction($conn, $machineType, $clientRate, $quantity) {
+    $cfg = getRateConfig($conn);
+    if (isset($cfg[$machineType])) {
+        $rate = $cfg[$machineType]['rate'];
+        $base = $cfg[$machineType]['base'];
+        $free = $cfg[$machineType]['free_qty'];
+        if ($quantity <= $free) {
+            $total = $base;
+        } else {
+            $total = $base + $rate * ($quantity - $free);
+        }
+        return ['rate' => $rate, 'total' => $total];
+    }
+    return ['rate' => (float)$clientRate, 'total' => (float)$clientRate * (float)$quantity];
 }
 
 // --- API Functions ---
@@ -382,7 +426,11 @@ function updateTrans() {
     $rate = (float)$obj->rate;
     $quantity = (int)$obj->quantity;
     $machineType = $obj->machineType;
-    $total = (float)$obj->total;
+
+    // Server-side authoritative pricing (see onCreateATransaction).
+    $priced = priceTransaction($conn, $machineType, $obj->rate, $quantity);
+    $rate = $priced['rate'];
+    $total = $priced['total'];
 
     $stmt = $conn->prepare("UPDATE `transaction` SET `date` = ?, `client` = ?, `cc` = ?, `rate` = ?, `total` = ?, `labour` = ?, `quantity` = ?, `machineType` = ?, `month` = ?, `year` = ? WHERE `dateTime` = ?");
     $stmt->bind_param("sssddsissss", $date, $client, $cc, $rate, $total, $labour, $quantity, $machineType, $month, $year, $dateTime);
@@ -463,7 +511,13 @@ function onCreateATransaction() {
     $rate = (float)$obj->rate;
     $quantity = (int)$obj->quantity;
     $machineType = $obj->machineType;
-    $total = (float)$obj->total;
+
+    // Server-side authoritative pricing: for configured machine types (Softening,
+    // Milling, ...) rate & total are derived from rate_config, so a wrong value
+    // sent by the client can never be stored.
+    $priced = priceTransaction($conn, $machineType, $obj->rate, $quantity);
+    $rate = $priced['rate'];
+    $total = $priced['total'];
 
     $stmt = $conn->prepare("INSERT INTO transaction(date, client, labour, cc, rate, quantity, machineType, total, month, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->bind_param("ssssdisdss", $date, $client, $labour, $cc, $rate, $quantity, $machineType, $total, $month, $year);
@@ -557,6 +611,38 @@ function insertProfitLoss() {
         $month, $year, $shaving, $buffing, $charbi, $milling, $tangan,
         $electricBill, $munshi, $churi, $mobil, $buffPaper, $bhussi, $maintenance, $vBelt, $miscellaneous
     );
+
+    if ($stmt->execute()) {
+        return json_encode(["status" => "success"]);
+    }
+    return json_encode(["status" => "failed"]);
+}
+
+function getRates() {
+    $conn = getDbConnection();
+    $result = @$conn->query("SELECT machineType, rate, base, free_qty FROM rate_config ORDER BY machineType ASC");
+    if (!$result) {
+        return json_encode([]);
+    }
+    return json_encode(fetchAll($result));
+}
+
+function updateRate() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $machineType = $obj->machineType;
+    $rate = (float)($obj->rate ?? 0);
+    $base = (float)($obj->base ?? 0);
+    $freeQty = (float)($obj->free_qty ?? 0);
+
+    $stmt = @$conn->prepare(
+        "INSERT INTO rate_config (machineType, rate, base, free_qty) VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE rate = VALUES(rate), base = VALUES(base), free_qty = VALUES(free_qty)"
+    );
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'rate_config' does not exist."]);
+    }
+    $stmt->bind_param("sddd", $machineType, $rate, $base, $freeQty);
 
     if ($stmt->execute()) {
         return json_encode(["status" => "success"]);
