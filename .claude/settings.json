@@ -59,7 +59,8 @@
       "PowerShell($out = \"C:\\\\Users\\\\Deepak\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--xampp-htdocs-Hisab\\\\126a0cb4-8c49-426d-881d-14e35f3057f1\\\\scratchpad\\\\shots\"; & 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe' --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1500,600 --virtual-time-budget=30000 --user-data-dir=\"$out\\\\profile\" --screenshot=\"$out\\\\kpi.png\" \"http://localhost/Hisab/webapp/index.html#/MachineExpense\" 2>&1 | Select-Object -Last 1)",
       "Bash(/c/xampp/php/php.exe -l php/process.php)",
       "Bash(python -c ' *)",
-      "PowerShell($out = \"C:\\\\Users\\\\Deepak\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--xampp-htdocs-Hisab\\\\126a0cb4-8c49-426d-881d-14e35f3057f1\\\\scratchpad\\\\shots\"; & 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe' --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1500,700 --virtual-time-budget=25000 --user-data-dir=\"$out\\\\profile\" --screenshot=\"$out\\\\final_main.png\" \"http://localhost/Hisab/webapp/index.html#/Main\" 2>&1 | Select-Object -Last 1)"
+      "PowerShell($out = \"C:\\\\Users\\\\Deepak\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--xampp-htdocs-Hisab\\\\126a0cb4-8c49-426d-881d-14e35f3057f1\\\\scratchpad\\\\shots\"; & 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe' --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1500,700 --virtual-time-budget=25000 --user-data-dir=\"$out\\\\profile\" --screenshot=\"$out\\\\final_main.png\" \"http://localhost/Hisab/webapp/index.html#/Main\" 2>&1 | Select-Object -Last 1)",
+      "Bash([ -x \"$MYSQL\" ])"
     ]
   }
 }
