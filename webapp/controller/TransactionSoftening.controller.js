@@ -84,6 +84,21 @@ sap.ui.define(
 
         // Set Model
         this.byId("idTable").setModel(oModel);
+
+        // Load the fixed rate from central Rate Settings (read-only field)
+        $.ajax({
+          url: this.uri,
+          type: "POST",
+          data: { method: "getRates", data: JSON.stringify({}) },
+          dataType: "json",
+          success: function (rates) {
+            (rates || []).forEach(function (r) {
+              if (r.machineType === "Softening") {
+                oModel.setProperty("/Rate", r.rate);
+              }
+            });
+          },
+        });
       },
 
       onSaveTransaction: function () {

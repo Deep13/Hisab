@@ -1,0 +1,43 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+	controllerName="Hisab.Hisab.controller.RateSettings"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+	<Page title="Rate Settings" showNavButton="true" navButtonPress="onpressBack"
+		titleAlignment="Center">
+		<content>
+			<MessageStrip
+				text="These are the fixed rates used to calculate transaction totals. Total = Base + Rate x (Quantity - Free Qty), or a flat Base when Quantity is at or below Free Qty. Changing a rate only affects new/edited transactions."
+				type="Information" showIcon="true" class="sapUiSmallMargin" />
+			<Table id="idRateTable" items="{/}" class="sapUiSmallMargin" inset="false"
+				fixedLayout="false" width="auto">
+				<columns>
+					<Column width="8rem"><Label text="Process" /></Column>
+					<Column hAlign="End" width="7rem"><Label text="Rate" /></Column>
+					<Column hAlign="End" width="7rem"
+						demandPopin="true" minScreenWidth="Tablet" popinDisplay="Inline">
+						<Label text="Base charge" />
+					</Column>
+					<Column hAlign="End" width="7rem"
+						demandPopin="true" minScreenWidth="Tablet" popinDisplay="Inline">
+						<Label text="Free Qty" />
+					</Column>
+				</columns>
+				<items>
+					<ColumnListItem>
+						<cells>
+							<Text text="{machineType}" />
+							<Input value="{rate}" type="Number" textAlign="End" width="6rem" />
+							<Input value="{base}" type="Number" textAlign="End" width="6rem" />
+							<Input value="{free_qty}" type="Number" textAlign="End" width="6rem" />
+						</cells>
+					</ColumnListItem>
+				</items>
+			</Table>
+		</content>
+		<footer>
+			<OverflowToolbar>
+				<ToolbarSpacer />
+				<Button type="Accept" text="Save Rates" icon="sap-icon://save" press="onSaveRates" />
+			</OverflowToolbar>
+		</footer>
+	</Page>
+</mvc:View>

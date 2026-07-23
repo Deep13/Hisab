@@ -59,7 +59,7 @@
 								</Input>
 								<Input value="{/Quantity}" type="Number" submit="onSumbit" />
 								<Button type="Accept" text="{i18n>Submit}" press="onSaveTransaction" />
-								<Input value="{/Rate}" type="Number" submit="onSumbit" />
+								<Input value="{/Rate}" type="Number" editable="false" tooltip="Rate is fixed in Rate Settings" />
 							</cells>
 						</ColumnListItem>
 					</items>

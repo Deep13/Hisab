@@ -170,6 +170,11 @@
           "name": "ProfitLoss",
           "pattern": "ProfitLoss",
           "target": "ProfitLoss"
+        },
+        {
+          "name": "RateSettings",
+          "pattern": "RateSettings",
+          "target": "RateSettings"
         }
       ],
       "targets": {
@@ -253,6 +258,10 @@
         "ProfitLoss": {
           "viewType": "XML",
           "viewName": "ProfitLoss"
+        },
+        "RateSettings": {
+          "viewType": "XML",
+          "viewName": "RateSettings"
         }
       }
     }

@@ -165,16 +165,26 @@ sap.ui.define(
           contentWidth: "700px",
           contentHeight: "750px",
           content: this._buildDetailContent(data, officeBreakdown),
-          beginButton: new Button({
-            text: "Print",
-            icon: "sap-icon://print",
-            type: "Emphasized",
-            press: function () { that._printPLDetail(data, officeBreakdown); }
-          }),
-          endButton: new Button({
-            text: "Close",
-            press: function () { oDialog.close(); }
-          }),
+          buttons: [
+            new Button({
+              text: "Edit",
+              icon: "sap-icon://edit",
+              press: function () {
+                oDialog.close();
+                that._openPLForm(data);
+              }
+            }),
+            new Button({
+              text: "Print",
+              icon: "sap-icon://print",
+              type: "Emphasized",
+              press: function () { that._printPLDetail(data, officeBreakdown); }
+            }),
+            new Button({
+              text: "Close",
+              press: function () { oDialog.close(); }
+            })
+          ],
           afterClose: function () { oDialog.destroy(); }
         });
         this.getView().addDependent(oDialog);
@@ -380,6 +390,15 @@ sap.ui.define(
       },
 
       onCreate: function () {
+        this._openPLForm(null);
+      },
+
+      // Opens the P&L entry form. When oExisting is passed, the form is in
+      // edit mode: month/year are locked and expenses are pre-filled from the
+      // saved record (earnings are always re-derived from live transactions).
+      // Saving upserts on (month, year) via insertProfitLoss.
+      _openPLForm: function (oExisting) {
+        var bEdit = !!oExisting;
         var monthItems = [];
         for (var i = 0; i < 12; i++) {
           monthItems.push(new Item({
@@ -393,16 +412,25 @@ sap.ui.define(
           yearItems.push(new Item({ key: y.toString(), text: y.toString() }));
         }
 
-        var oFormModel = new JSONModel({
-          month: ("0" + (new Date().getMonth() + 1)).slice(-2),
-          year: currYear.toString(),
-          shaving: 0, buffing: 0, charbi: 0, milling: 0, tangan: 0,
+        var initExpenses = {
           electricBill: 0, munshi: 0, churi: 0, mobil: 0, buffPaper: 0,
-          bhussi: 0, maintenance: 0, vBelt: 0, miscellaneous: 0,
+          bhussi: 0, maintenance: 0, vBelt: 0, miscellaneous: 0
+        };
+        if (bEdit) {
+          EXPENSES.forEach(function (x) {
+            initExpenses[x.inputKey] = parseFloat(oExisting[x.key]) || 0;
+          });
+        }
+
+        var oFormModel = new JSONModel(Object.assign({
+          month: bEdit ? ("0" + parseInt(oExisting.month, 10)).slice(-2)
+                       : ("0" + (new Date().getMonth() + 1)).slice(-2),
+          year: bEdit ? oExisting.year.toString() : currYear.toString(),
+          shaving: 0, buffing: 0, charbi: 0, milling: 0, tangan: 0,
           shavingProfit: 0, buffingProfit: 0, charbiProfit: 0, millingProfit: 0, tanganProfit: 0,
           totalEarning: 0, totalExpense: 0, grossProfit: 0, netProfit: 0,
           offices: []
-        });
+        }, initExpenses));
         oFormModel.setSizeLimit(100);
 
         var that = this;
@@ -410,11 +438,13 @@ sap.ui.define(
         var monthSelect = new Select({
           selectedKey: "{form>/month}",
           items: monthItems,
+          enabled: !bEdit,
           change: function () { that._fetchEarningsForForm(oFormModel); }
         });
         var yearSelect = new Select({
           selectedKey: "{form>/year}",
           items: yearItems,
+          enabled: !bEdit,
           change: function () { that._fetchEarningsForForm(oFormModel); }
         });
 
@@ -471,7 +501,7 @@ sap.ui.define(
         }));
 
         var oDialog = new Dialog({
-          title: "Add Monthly P&L",
+          title: bEdit ? "Edit Monthly P&L" : "Add Monthly P&L",
           contentWidth: "600px",
           contentHeight: "650px",
           content: content,

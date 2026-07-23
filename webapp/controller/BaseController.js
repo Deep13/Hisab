@@ -11,7 +11,7 @@ sap.ui.define(
        */
       onInit: function () { },
       getHost: function () {
-        return "localhost/Hisab/php/process.php";
+        return "localhost:8080/Hisab/php/process.php";
       },
     });
   }
