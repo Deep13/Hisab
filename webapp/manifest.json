@@ -132,9 +132,14 @@
           "target": "Routine"
         },
         {
-          "name": "ServiceDetail",
-          "pattern": "ServiceDetail/{machineDetail}",
-          "target": "ServiceDetail"
+          "name": "MachineExpense",
+          "pattern": "MachineExpense",
+          "target": "MachineExpense"
+        },
+        {
+          "name": "MachineExpenseDetail",
+          "pattern": "MachineExpense/{machineDetail}",
+          "target": "MachineExpenseDetail"
         },
         {
           "name": "Invoice",
@@ -173,10 +178,15 @@
           "transition": "slide",
           "viewName": "Main"
         },
-        "ServiceDetail": {
+        "MachineExpense": {
           "viewType": "XML",
           "transition": "slide",
-          "viewName": "ServiceDetail"
+          "viewName": "MachineExpense"
+        },
+        "MachineExpenseDetail": {
+          "viewType": "XML",
+          "transition": "slide",
+          "viewName": "MachineExpenseDetail"
         },
         "Routine": {
           "viewType": "XML",

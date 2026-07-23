@@ -41,7 +41,6 @@ sap.ui.define(
               Clients_results: data,
             };
             var jModel = new JSONModel(ComboObj);
-            jModel.setSizeLimit(ComboObj.Clients_results.length);
             that.getView().setModel(jModel, "ComboModel");
           },
           error: function (request, error) {

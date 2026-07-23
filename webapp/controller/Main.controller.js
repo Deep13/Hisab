@@ -84,6 +84,9 @@ sap.ui.define(
       onPressRoutine: function () {
         this.oRouter.navTo("Routine");
       },
+      onPressMachineExpense: function () {
+        this.oRouter.navTo("MachineExpense");
+      },
       onPressTran: function () {
         this.oRouter.navTo("ViewTransaction");
       },

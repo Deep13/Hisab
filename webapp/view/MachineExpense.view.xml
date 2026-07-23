@@ -1,0 +1,231 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+	controllerName="Hisab.Hisab.controller.MachineExpense"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+	<Page class="sapUiSizeCompact" showNavButton="true" navButtonPress="onpressBack">
+		<customHeader>
+			<Bar>
+				<contentLeft>
+					<Button icon="sap-icon://nav-back" press="onpressBack" />
+				</contentLeft>
+				<contentMiddle>
+					<Title text="Machine Expenses" />
+				</contentMiddle>
+				<contentRight>
+					<Button icon="sap-icon://add" type="Emphasized" text="Add Machine"
+						press="onAddMachine" />
+				</contentRight>
+			</Bar>
+		</customHeader>
+		<content>
+			<IconTabBar id="idTabBar" expandable="false" stretchContentHeight="true"
+				select="onTabSelect" class="sapUiResponsiveContentPadding">
+				<items>
+					<IconTabFilter text="Machines" key="machines" icon="sap-icon://machine">
+						<VBox class="sapUiSmallMarginTop">
+							<HBox wrap="Wrap" alignItems="End" class="sapUiSmallMarginBottom">
+								<VBox class="sapUiSmallMarginEnd">
+									<Label text="Search" design="Bold" />
+									<SearchField id="idMachineSearch" width="14rem"
+										placeholder="Machine or service name"
+										liveChange="onMachineSearch" search="onMachineSearch" />
+								</VBox>
+								<VBox class="sapUiSmallMarginEnd">
+									<Label text="Office" design="Bold" />
+									<ComboBox id="idMachineOffice" width="11rem"
+										placeholder="All offices" items="{filters>/offices}"
+										selectionChange="onMachineFilterChange"
+										change="onMachineFilterChange">
+										<items>
+											<core:Item key="{filters>cc}" text="{filters>cc}" />
+										</items>
+									</ComboBox>
+								</VBox>
+								<VBox class="sapUiSmallMarginEnd">
+									<Label text="Machine Type" design="Bold" />
+									<ComboBox id="idMachineType" width="11rem" placeholder="All types"
+										items="{filters>/types}"
+										selectionChange="onMachineFilterChange"
+										change="onMachineFilterChange">
+										<items>
+											<core:Item key="{filters>type}" text="{filters>type}" />
+										</items>
+									</ComboBox>
+								</VBox>
+								<VBox class="sapUiSmallMarginEnd">
+									<Label text="Spend" design="Bold" />
+									<Select id="idSpendFilter" width="11rem"
+										change="onMachineFilterChange">
+										<core:Item key="all" text="Any amount" />
+										<core:Item key="none" text="No expenses yet" />
+										<core:Item key="some" text="Has expenses" />
+									</Select>
+								</VBox>
+								<Button icon="sap-icon://sort" text="Sort" press="onSortMachines"
+									class="sapUiSmallMarginEnd" />
+								<Button icon="sap-icon://clear-filter" text="Clear"
+									press="onClearMachineFilters" />
+							</HBox>
+
+							<Table id="idMachineTable" sticky="ColumnHeaders" growing="true"
+								growingThreshold="25" growingScrollToLoad="true"
+								items="{machines>/results}"
+								noDataText="No machines yet. Use 'Add Machine' to create one.">
+								<headerToolbar>
+									<OverflowToolbar>
+										<Title id="idMachineCount" text="Machines" level="H2" />
+										<ToolbarSpacer />
+										<ObjectStatus id="idMachineTotal" state="Information"
+											icon="sap-icon://money-bills" />
+									</OverflowToolbar>
+								</headerToolbar>
+								<columns>
+									<Column>
+										<Label text="Machine" design="Bold" />
+									</Column>
+									<Column>
+										<Label text="Office" design="Bold" />
+									</Column>
+									<Column minScreenWidth="Tablet" demandPopin="true">
+										<Label text="Type" design="Bold" />
+									</Column>
+									<Column hAlign="End" minScreenWidth="Tablet" demandPopin="true"
+										width="7rem">
+										<Label text="Entries" design="Bold" />
+									</Column>
+									<Column minScreenWidth="Tablet" demandPopin="true" width="9rem">
+										<Label text="Last Expense" design="Bold" />
+									</Column>
+									<Column hAlign="End" width="9rem">
+										<Label text="Total Spend" design="Bold" />
+									</Column>
+								</columns>
+								<items>
+									<ColumnListItem type="Navigation" press="onMachinePress">
+										<cells>
+											<ObjectIdentifier title="{machines>machineName}" />
+											<Text text="{machines>cc}" />
+											<Text text="{machines>type}" />
+											<Text text="{machines>expenseCount}" />
+											<Text
+												text="{ path: 'machines>lastServicedOn', formatter: '.formatter.displayDate' }" />
+											<ObjectNumber
+												number="{ path: 'machines>totalAmount', formatter: '.formatter.amount' }"
+												unit="INR"
+												state="{ path: 'machines>totalAmount', formatter: '.formatter.amountState' }" />
+										</cells>
+									</ColumnListItem>
+								</items>
+							</Table>
+						</VBox>
+					</IconTabFilter>
+
+					<IconTabFilter text="Report" key="report" icon="sap-icon://bar-chart">
+						<VBox class="sapUiSmallMarginTop">
+							<HBox wrap="Wrap" alignItems="End" class="sapUiSmallMarginBottom">
+								<VBox class="sapUiSmallMarginEnd">
+									<Label text="Date Range" design="Bold" required="true" />
+									<DateRangeSelection id="idReportRange" width="17rem"
+										displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd"
+										change="onReportRangeChange" />
+								</VBox>
+								<VBox class="sapUiSmallMarginEnd">
+									<Label text="Office" design="Bold" />
+									<ComboBox id="idReportOffice" width="11rem"
+										placeholder="All offices" items="{filters>/offices}">
+										<items>
+											<core:Item key="{filters>cc}" text="{filters>cc}" />
+										</items>
+									</ComboBox>
+								</VBox>
+								<VBox class="sapUiSmallMarginEnd">
+									<Label text="Machine Type" design="Bold" />
+									<ComboBox id="idReportType" width="11rem" placeholder="All types"
+										items="{filters>/types}">
+										<items>
+											<core:Item key="{filters>type}" text="{filters>type}" />
+										</items>
+									</ComboBox>
+								</VBox>
+								<Button text="Show Report" type="Emphasized" icon="sap-icon://refresh"
+									press="onRunReport" class="sapUiSmallMarginEnd" />
+								<Button text="Last 12 Months" press="onReportLastYear"
+									class="sapUiTinyMarginEnd" />
+								<Button text="All Time" press="onReportAllTime" />
+							</HBox>
+
+							<HBox wrap="Wrap" class="sapUiSmallMarginBottom">
+								<GenericTile class="sapUiTinyMarginEnd tileLayout" header="Total Spend"
+									subheader="Selected range">
+									<TileContent>
+										<NumericContent id="idKpiTotal" value="0" truncateValueTo="12"
+											valueColor="Critical" icon="sap-icon://money-bills" />
+									</TileContent>
+								</GenericTile>
+								<GenericTile class="sapUiTinyMarginEnd tileLayout" header="Machines"
+									subheader="With expenses">
+									<TileContent>
+										<NumericContent id="idKpiMachines" value="0" truncateValueTo="8"
+											valueColor="Good" icon="sap-icon://machine" />
+									</TileContent>
+								</GenericTile>
+								<GenericTile class="sapUiTinyMarginEnd tileLayout" header="Entries"
+									subheader="Expense records">
+									<TileContent>
+										<NumericContent id="idKpiEntries" value="0" truncateValueTo="8"
+											valueColor="Neutral" icon="sap-icon://list" />
+									</TileContent>
+								</GenericTile>
+							</HBox>
+
+							<Panel headerText="Expense by Machine" class="sapUiSmallMarginBottom">
+								<content>
+									<core:HTML id="idChartHtml"
+										content="&lt;div id=&quot;machineExpenseChartDiv&quot; style=&quot;width:100%;min-height:360px&quot;&gt;&lt;/div&gt;" />
+								</content>
+							</Panel>
+
+							<Table id="idReportTable" items="{report>/results}" growing="true"
+								growingThreshold="25" noDataText="Pick a date range and press 'Show Report'.">
+								<headerToolbar>
+									<OverflowToolbar>
+										<Title id="idReportTitle" text="Breakdown" level="H2" />
+									</OverflowToolbar>
+								</headerToolbar>
+								<columns>
+									<Column>
+										<Label text="Machine" design="Bold" />
+									</Column>
+									<Column>
+										<Label text="Office" design="Bold" />
+									</Column>
+									<Column minScreenWidth="Tablet" demandPopin="true">
+										<Label text="Type" design="Bold" />
+									</Column>
+									<Column hAlign="End" width="7rem">
+										<Label text="Entries" design="Bold" />
+									</Column>
+									<Column hAlign="End" width="9rem">
+										<Label text="Total" design="Bold" />
+									</Column>
+								</columns>
+								<items>
+									<ColumnListItem>
+										<cells>
+											<ObjectIdentifier title="{report>machineName}" />
+											<Text text="{report>cc}" />
+											<Text text="{report>type}" />
+											<Text text="{report>expenseCount}" />
+											<ObjectNumber
+												number="{ path: 'report>totalAmount', formatter: '.formatter.amount' }"
+												unit="INR" />
+										</cells>
+									</ColumnListItem>
+								</items>
+							</Table>
+						</VBox>
+					</IconTabFilter>
+				</items>
+			</IconTabBar>
+		</content>
+	</Page>
+</mvc:View>

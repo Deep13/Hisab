@@ -1,0 +1,11 @@
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
+	<ViewSettingsDialog id="idExpenseSortDialog" sortDescending="true"
+		confirm="onExpenseSortConfirm">
+		<sortItems>
+			<ViewSettingsItem key="servicedOn" text="Expense date" selected="true" />
+			<ViewSettingsItem key="serviceName" text="Service name" />
+			<ViewSettingsItem key="Amount" text="Amount" />
+			<ViewSettingsItem key="dateTime" text="Recorded on" />
+		</sortItems>
+	</ViewSettingsDialog>
+</core:FragmentDefinition>

@@ -1,0 +1,122 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+	controllerName="Hisab.Hisab.controller.MachineExpenseDetail"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+	<Page class="sapUiSizeCompact" showNavButton="true" navButtonPress="onpressBack">
+		<customHeader>
+			<Bar>
+				<contentLeft>
+					<Button icon="sap-icon://nav-back" press="onpressBack" />
+				</contentLeft>
+				<contentMiddle>
+					<Title text="Machine Expenses" />
+				</contentMiddle>
+			</Bar>
+		</customHeader>
+		<content>
+			<ObjectHeader class="sapUiSmallMarginBottom" responsive="true"
+				title="{machine>/machineName}" icon="sap-icon://machine"
+				number="{ path: 'machine>/totalAmount', formatter: '.formatter.amount' }"
+				numberUnit="INR">
+				<attributes>
+					<ObjectAttribute title="Office" text="{machine>/cc}" />
+					<ObjectAttribute title="Type" text="{machine>/type}" />
+					<ObjectAttribute title="Entries" text="{machine>/expenseCount}" />
+					<ObjectAttribute title="Last Expense"
+						text="{ path: 'machine>/lastServicedOn', formatter: '.formatter.displayDate' }" />
+				</attributes>
+			</ObjectHeader>
+
+			<Panel headerText="Record an Expense" expandable="true" expanded="true"
+				class="sapUiSmallMarginBottom">
+				<content>
+					<HBox wrap="Wrap" alignItems="End" class="sapUiSmallMargin">
+						<VBox class="sapUiSmallMarginEnd">
+							<Label text="Service Name" design="Bold" required="true" />
+							<Input id="idNewServiceName" width="16rem"
+								placeholder="e.g. Rolla Polish" />
+						</VBox>
+						<VBox class="sapUiSmallMarginEnd">
+							<Label text="Amount" design="Bold" required="true" />
+							<Input id="idNewServiceAmount" width="10rem" type="Number"
+								placeholder="0" />
+						</VBox>
+						<VBox class="sapUiSmallMarginEnd">
+							<Label text="Date" design="Bold" required="true" />
+							<DatePicker id="idNewServiceDate" width="11rem"
+								displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd" />
+						</VBox>
+						<Button text="Add Expense" type="Emphasized" icon="sap-icon://add"
+							press="onAddExpense" />
+					</HBox>
+				</content>
+			</Panel>
+
+			<HBox wrap="Wrap" alignItems="End" class="sapUiSmallMarginBegin sapUiSmallMarginBottom">
+				<VBox class="sapUiSmallMarginEnd">
+					<Label text="Search" design="Bold" />
+					<SearchField id="idExpenseSearch" width="14rem" placeholder="Service name"
+						liveChange="onExpenseSearch" search="onExpenseSearch" />
+				</VBox>
+				<VBox class="sapUiSmallMarginEnd">
+					<Label text="Date Range" design="Bold" />
+					<DateRangeSelection id="idExpenseRange" width="17rem"
+						displayFormat="dd/MM/yyyy" valueFormat="yyyy-MM-dd"
+						change="onExpenseFilterChange" />
+				</VBox>
+				<VBox class="sapUiSmallMarginEnd">
+					<Label text="Amount" design="Bold" />
+					<Select id="idExpenseAmount" width="12rem" change="onExpenseFilterChange">
+						<core:Item key="all" text="Any amount" />
+						<core:Item key="0" text="Zero only" />
+						<core:Item key="1000" text="Above 1,000" />
+						<core:Item key="5000" text="Above 5,000" />
+					</Select>
+				</VBox>
+				<Button icon="sap-icon://sort" text="Sort" press="onSortExpenses"
+					class="sapUiSmallMarginEnd" />
+				<Button icon="sap-icon://clear-filter" text="Clear" press="onClearExpenseFilters" />
+			</HBox>
+
+			<Table id="idExpenseTable" sticky="ColumnHeaders" growing="true"
+				growingThreshold="25" growingScrollToLoad="true" items="{expenses>/results}"
+				noDataText="No expenses recorded for this machine yet.">
+				<headerToolbar>
+					<OverflowToolbar>
+						<Title id="idExpenseCount" text="Expenses" level="H2" />
+						<ToolbarSpacer />
+						<ObjectStatus id="idExpenseTotal" state="Information"
+							icon="sap-icon://money-bills" />
+					</OverflowToolbar>
+				</headerToolbar>
+				<columns>
+					<Column width="10rem">
+						<Label text="Date" design="Bold" />
+					</Column>
+					<Column>
+						<Label text="Service Name" design="Bold" />
+					</Column>
+					<Column hAlign="End" width="10rem">
+						<Label text="Amount" design="Bold" />
+					</Column>
+					<Column minScreenWidth="Tablet" demandPopin="true" width="12rem">
+						<Label text="Recorded On" design="Bold" />
+					</Column>
+				</columns>
+				<items>
+					<ColumnListItem>
+						<cells>
+							<Text
+								text="{ path: 'expenses>servicedOn', formatter: '.formatter.displayDate' }" />
+							<ObjectIdentifier title="{expenses>serviceName}" />
+							<ObjectNumber
+								number="{ path: 'expenses>Amount', formatter: '.formatter.amount' }"
+								unit="INR"
+								state="{ path: 'expenses>Amount', formatter: '.formatter.amountState' }" />
+							<Text text="{expenses>dateTime}" />
+						</cells>
+					</ColumnListItem>
+				</items>
+			</Table>
+		</content>
+	</Page>
+</mvc:View>

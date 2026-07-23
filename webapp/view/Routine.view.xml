@@ -64,39 +64,6 @@
 			</ColumnListItem>
 		</items>
 	</Table>
-	<Table class="sapUiLargeMarginTop" id="idProductsTable2"
-	headerText="Service"
-		inset="false"
-		items="{
-			path: 'Service>/results',
-			sorter: {
-				path: 'dateValue'
-			}
-		}">
-		<columns>
-		<Column>
-				<Text text="Office" />
-			</Column>
-			<Column>
-				<Text text="Machine Name" />
-			</Column>
-            <Column>
-				<Text text="Last Serviced On" />
-			</Column>
-		</columns>
-		<items>
-			<ColumnListItem type="Navigation" press="onPressItem">
-				<cells>
-					<Text
-					text="{Service>cc}" />
-					<Text
-					text="{Service>machineName}" />
-					<Text
-					text="{Service>servicedOn}" />
-				</cells>
-			</ColumnListItem>
-		</items>
-	</Table>
 		</content>
 	</Page>
 </mvc:View>

@@ -32,7 +32,13 @@ $allowedMethods = [
     'getKhazana',
     'getLabourAnalytics',
     'getProfitLoss',
-    'insertProfitLoss'
+    'insertProfitLoss',
+    'getOffices',
+    'getMachines',
+    'createMachine',
+    'getMachineExpenses',
+    'insertMachineExpense',
+    'getMachineExpenseReport'
 ];
 
 $method = isset($_POST["method"]) ? $_POST["method"] : '';
@@ -562,6 +568,180 @@ function insertProfitLoss() {
         return json_encode(["status" => "success"]);
     }
     return json_encode(["status" => "failed"]);
+}
+
+// --- Machine master & machine expenses ---
+
+/**
+ * Offices to offer when creating a machine. Taken from the transaction data so
+ * the list stays in sync with the rest of the app (Factory 01-04, Main ...).
+ */
+function getOffices() {
+    $conn = getDbConnection();
+    $result = $conn->query("SELECT DISTINCT `cc` FROM `transaction` WHERE `cc` <> '' ORDER BY `cc` ASC");
+    if ($result && $result->num_rows > 0) {
+        return json_encode(fetchAll($result));
+    }
+    return json_encode([]);
+}
+
+/**
+ * Machine master enriched with expense totals, so the list page can be filtered
+ * and sorted on spend without a second round trip.
+ */
+function getMachines() {
+    $conn = getDbConnection();
+    $result = $conn->query(
+        "SELECT m.id, m.cc, m.machineName, m.type, m.createdOn, m.active,
+                COUNT(s.dateTime) AS expenseCount,
+                COALESCE(SUM(s.Amount), 0) AS totalAmount,
+                MIN(s.servicedOn) AS firstServicedOn,
+                MAX(s.servicedOn) AS lastServicedOn
+         FROM `machine` m
+         LEFT JOIN `service` s ON s.cc = m.cc AND s.machineName = m.machineName
+         GROUP BY m.id, m.cc, m.machineName, m.type, m.createdOn, m.active
+         ORDER BY m.cc ASC, m.machineName ASC"
+    );
+    if ($result && $result->num_rows > 0) {
+        return json_encode(fetchAll($result));
+    }
+    return json_encode([]);
+}
+
+function createMachine() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $cc = trim($obj->cc ?? '');
+    $machineName = trim($obj->machineName ?? '');
+    $type = trim($obj->type ?? '');
+
+    if ($cc === '' || $machineName === '' || $type === '') {
+        return json_encode(["status" => "failed", "error" => "Office, machine name and type are required"]);
+    }
+
+    $stmt = $conn->prepare("SELECT `id` FROM `machine` WHERE `cc` = ? AND `machineName` = ?");
+    $stmt->bind_param("ss", $cc, $machineName);
+    $stmt->execute();
+    if ($stmt->get_result()->num_rows > 0) {
+        return json_encode(["status" => "failed", "error" => "'" . $machineName . "' already exists in " . $cc]);
+    }
+
+    $stmt = $conn->prepare("INSERT INTO `machine` (`cc`, `machineName`, `type`, `createdOn`, `active`) VALUES (?, ?, ?, CURDATE(), 1)");
+    $stmt->bind_param("sss", $cc, $machineName, $type);
+
+    if ($stmt->execute()) {
+        return json_encode(["status" => "success", "id" => $conn->insert_id]);
+    }
+    return json_encode(["status" => "failed", "error" => "Could not create machine"]);
+}
+
+function getMachineExpenses() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $cc = $obj->cc ?? '';
+    $machineName = $obj->machineName ?? '';
+
+    $stmt = $conn->prepare(
+        "SELECT `dateTime`, `cc`, `machineName`, `type`, `servicedOn`, `serviceName`, `Amount`
+         FROM `service`
+         WHERE `cc` = ? AND `machineName` = ?
+         ORDER BY `servicedOn` DESC"
+    );
+    $stmt->bind_param("ss", $cc, $machineName);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result && $result->num_rows > 0) {
+        return json_encode(fetchAll($result));
+    }
+    return json_encode([]);
+}
+
+/**
+ * Records one expense against a machine. The machine type is taken from the
+ * master rather than the client, so it cannot drift per expense row.
+ */
+function insertMachineExpense() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $cc = trim($obj->cc ?? '');
+    $machineName = trim($obj->machineName ?? '');
+    $serviceName = trim($obj->serviceName ?? '');
+    $servicedOn = $obj->servicedOn ?? '';
+    $amount = (float)($obj->Amount ?? 0);
+
+    if ($cc === '' || $machineName === '' || $serviceName === '' || $servicedOn === '') {
+        return json_encode(["status" => "failed", "error" => "Service name and date are required"]);
+    }
+
+    $stmt = $conn->prepare("SELECT `type` FROM `machine` WHERE `cc` = ? AND `machineName` = ?");
+    $stmt->bind_param("ss", $cc, $machineName);
+    $stmt->execute();
+    $machine = $stmt->get_result()->fetch_assoc();
+    if (!$machine) {
+        return json_encode(["status" => "failed", "error" => "Unknown machine"]);
+    }
+    $type = $machine["type"];
+
+    $stmt = $conn->prepare(
+        "INSERT INTO `service` (`cc`, `servicedOn`, `serviceName`, `machineName`, `type`, `Amount`)
+         VALUES (?, ?, ?, ?, ?, ?)"
+    );
+    $stmt->bind_param("sssssd", $cc, $servicedOn, $serviceName, $machineName, $type, $amount);
+
+    if ($stmt->execute()) {
+        return json_encode(["status" => "success"]);
+    }
+    return json_encode(["status" => "failed", "error" => "Could not save expense"]);
+}
+
+/**
+ * Machine-wise expense totals for a date range, driving the report bar chart.
+ * Machines without expenses in the range are left out.
+ */
+function getMachineExpenseReport() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $fromDate = $obj->fromDate ?? '';
+    $toDate = $obj->toDate ?? '';
+    $cc = trim($obj->cc ?? '');
+    $type = trim($obj->type ?? '');
+
+    if ($fromDate === '' || $toDate === '') {
+        return json_encode([]);
+    }
+
+    $sql = "SELECT s.cc, s.machineName, s.type,
+                   COUNT(*) AS expenseCount,
+                   COALESCE(SUM(s.Amount), 0) AS totalAmount,
+                   MIN(s.servicedOn) AS firstServicedOn,
+                   MAX(s.servicedOn) AS lastServicedOn
+            FROM `service` s
+            WHERE s.servicedOn BETWEEN ? AND ?";
+    $types = "ss";
+    $params = [$fromDate, $toDate];
+
+    if ($cc !== '') {
+        $sql .= " AND s.cc = ?";
+        $types .= "s";
+        $params[] = $cc;
+    }
+    if ($type !== '') {
+        $sql .= " AND s.type = ?";
+        $types .= "s";
+        $params[] = $type;
+    }
+    $sql .= " GROUP BY s.cc, s.machineName, s.type ORDER BY totalAmount DESC";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result && $result->num_rows > 0) {
+        return json_encode(fetchAll($result));
+    }
+    return json_encode([]);
 }
 
 ?>

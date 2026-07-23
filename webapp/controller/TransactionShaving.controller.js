@@ -62,7 +62,6 @@ sap.ui.define(
                   that.ClientList.push(Client.Client);
                 });
                 var jModel = new JSONModel(ComboObj);
-                jModel.setSizeLimit(ComboObj.Clients_results.length);
                 that.getView().setModel(jModel, "ComboModel");
               },
               error: function (request, error) {},

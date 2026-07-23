@@ -87,7 +87,6 @@ sap.ui.define(
               Clients_results: dataClient,
             };
             var jModel = new JSONModel(ComboObj);
-            jModel.setSizeLimit(ComboObj.Clients_results.length);
             that.getView().setModel(jModel, "ClientModel");
           },
           error: function (request, error) {
@@ -181,6 +180,8 @@ sap.ui.define(
           .getSource()
           .getModel("detailsModel")
           .setProperty(path, this.current);
+        this._reapplyFilter();
+        this._updateCount();
       },
       onSave: function (oEvent) {
         var that = this;
@@ -210,6 +211,8 @@ sap.ui.define(
               .byId("idTable")
               .getModel("detailsModel")
               .setProperty(path + "/Edit", false);
+            that._reapplyFilter();
+            that._updateCount();
 
             MessageBox.success("Updated");
           },
@@ -235,6 +238,42 @@ sap.ui.define(
         this.onFilterTable("labour", value);
       },
 
+      /**
+       * Combines the active column filters with an escape hatch for the row that
+       * is currently being edited: changing e.g. the client of a row must not make
+       * that row drop out of the filtered list before it could be saved.
+       */
+      _buildFilter: function (aLocFilter) {
+        if (!aLocFilter.length) {
+          return [];
+        }
+        return [
+          new Filter({
+            filters: [
+              new Filter({ filters: aLocFilter, and: true }),
+              new Filter("Edit", "EQ", true),
+            ],
+            and: false,
+          }),
+        ];
+      },
+
+      _updateCount: function () {
+        var oTable = this.byId("idTable");
+        oTable.setHeaderText(
+          "Client Transactions (" + oTable.getGrowingInfo().total + ")"
+        );
+      },
+
+      _reapplyFilter: function () {
+        var oBinding = this.byId("idTable").getBinding("items");
+        if (!oBinding) {
+          return;
+        }
+        var aLocFilter = Object.values(this.aFilters);
+        oBinding.filter(this._buildFilter(aLocFilter));
+      },
+
       onFilterTable: function (type, value) {
         var that = this;
         var aLocFilter = [];
@@ -252,12 +291,8 @@ sap.ui.define(
         });
 
         // apply filter settings
-        oBinding.filter(aLocFilter);
-        that
-          .byId("idTable")
-          .setHeaderText(
-            "Client Transactions (" + oTable.getGrowingInfo().total + ")"
-          );
+        oBinding.filter(this._buildFilter(aLocFilter));
+        that._updateCount();
       },
       /**
        * Similar to onAfterRendering, but this hook is invoked before the controller's View is re-rendered

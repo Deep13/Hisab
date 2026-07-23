@@ -44,34 +44,9 @@ sap.ui.define(
             console.log("error", error);
           },
         });
-        $.ajax({
-          url: that.uri,
-          type: "POST",
-          data: {
-            method: "getServiceMaster",
-          },
-          dataType: "json",
-          success: function (dataClient) {
-            that
-              .getView()
-              .setModel(new JSONModel({ results: dataClient }), "Service");
-            console.log("success", dataClient);
-          },
-          error: function (request, error) {
-            console.log("error", error);
-          },
-        });
       },
       onpressBack: function (oEvent) {
         this.oRouter.navTo("Main");
-      },
-      onPressItem: function (oEvent) {
-        var name = oEvent.getSource().getBindingContext("Service").getObject()
-          .machineName;
-        var cc = oEvent.getSource().getBindingContext("Service").getObject().cc;
-        this.oRouter.navTo("ServiceDetail", {
-          machineDetail: JSON.stringify({ machineName: name, cc: cc }),
-        });
       },
       onPressYes: function (oEvent) {
         var that = this;

@@ -104,6 +104,12 @@
 											<ImageContent src="sap-icon://bell"/>
 										</TileContent>
 									</GenericTile>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Machine Expenses" subheader="Machines &amp; Servicing"
+										press="onPressMachineExpense">
+										<TileContent>
+											<ImageContent src="sap-icon://machine"/>
+										</TileContent>
+									</GenericTile>
 								</content>
 							</Panel>
 							

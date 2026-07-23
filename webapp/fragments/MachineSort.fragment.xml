@@ -1,0 +1,12 @@
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
+	<ViewSettingsDialog id="idMachineSortDialog" confirm="onMachineSortConfirm">
+		<sortItems>
+			<ViewSettingsItem key="machineName" text="Machine name" selected="true" />
+			<ViewSettingsItem key="cc" text="Office" />
+			<ViewSettingsItem key="type" text="Machine type" />
+			<ViewSettingsItem key="totalAmount" text="Total spend" />
+			<ViewSettingsItem key="expenseCount" text="Number of entries" />
+			<ViewSettingsItem key="lastServicedOn" text="Last expense date" />
+		</sortItems>
+	</ViewSettingsDialog>
+</core:FragmentDefinition>
