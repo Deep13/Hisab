@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 23, 2026 at 04:20 PM
+-- Generation Time: Jul 24, 2026 at 10:36 AM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.0.30
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -112,6 +112,48 @@ INSERT INTO `labortransaction` (`Labor`, `Date`, `Client`, `Quantity`, `Machine`
 ('Deepak', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 ('Rudra', '16/11/2020', 'Sharp', 100, 'A', 'A', 120, 12000, 'Paid'),
 ('Babu5', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `machine`
+--
+
+CREATE TABLE `machine` (
+  `id` int(11) NOT NULL,
+  `cc` varchar(30) NOT NULL,
+  `machineName` varchar(30) NOT NULL,
+  `type` varchar(30) NOT NULL,
+  `createdOn` date NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `machine`
+--
+
+INSERT INTO `machine` (`id`, `cc`, `machineName`, `type`, `createdOn`, `active`) VALUES
+(1, 'Maidan', 'Charbi Dhol 1', 'Softening', '2021-04-04', 1),
+(2, 'Maidan', 'Charbi Dhol 3', 'Softening', '2021-07-01', 1),
+(3, 'Maidan', 'Shaving1', 'Shaving', '2020-12-25', 1),
+(4, 'Maidan', 'Shaving2', 'Shaving', '2021-04-07', 1),
+(5, 'Maidan', 'Shaving3', 'Shaving', '2021-04-11', 1),
+(6, 'Maidan', 'Shaving4', 'Shaving', '2021-04-19', 1),
+(7, 'Nauri Ram', 'Buff 1', 'Buffing', '2021-04-04', 1),
+(8, 'Nauri Ram', 'Charbi Dhol 1', 'Softening', '2021-07-15', 1),
+(9, 'Nauri Ram', 'Charbi Dhol 2', 'Softening', '2020-12-01', 1),
+(10, 'Nauri Ram', 'Shaving1', 'Shaving', '2021-01-01', 1),
+(11, 'Nauri Ram', 'Shaving2', 'Shaving', '2021-05-27', 1),
+(12, 'Nauri Ram', 'Shaving3', 'Shaving', '2021-04-05', 1),
+(13, 'Nauri Ram', 'Tangan', 'Tangan', '2021-06-10', 1),
+(14, 'Nauri Ram', 'Thokai', 'Thokai', '2021-01-01', 1),
+(15, 'Office', 'Charbi Dhol 1', 'Softening', '2021-05-18', 1),
+(16, 'Office', 'Charbi Dhol 2', 'Softening', '2020-11-12', 1),
+(17, 'Office', 'Milling Dhol 1', 'Milling', '2021-05-13', 1),
+(18, 'Office', 'Milling Dhol 2', 'Milling', '2021-07-20', 1),
+(19, 'Office', 'Shaving1', 'Shaving', '2021-02-10', 1),
+(20, 'Office', 'Shaving2', 'Shaving', '2020-08-30', 1),
+(21, 'Office', 'Thokai', 'Thokai', '2021-01-01', 1);
 
 -- --------------------------------------------------------
 
@@ -65505,6 +65547,13 @@ ALTER TABLE `khazana`
   ADD PRIMARY KEY (`dateTime`);
 
 --
+-- Indexes for table `machine`
+--
+ALTER TABLE `machine`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_machine_office` (`cc`,`machineName`);
+
+--
 -- Indexes for table `masterclient`
 --
 ALTER TABLE `masterclient`
@@ -65539,7 +65588,9 @@ ALTER TABLE `routine`
 -- Indexes for table `service`
 --
 ALTER TABLE `service`
-  ADD PRIMARY KEY (`dateTime`);
+  ADD PRIMARY KEY (`dateTime`),
+  ADD KEY `idx_service_machine` (`cc`,`machineName`),
+  ADD KEY `idx_service_serviced_on` (`servicedOn`);
 
 --
 -- Indexes for table `test`
@@ -65556,6 +65607,12 @@ ALTER TABLE `transaction`
 --
 -- AUTO_INCREMENT for dumped tables
 --
+
+--
+-- AUTO_INCREMENT for table `machine`
+--
+ALTER TABLE `machine`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `profit_loss`
