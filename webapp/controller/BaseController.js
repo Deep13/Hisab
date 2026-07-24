@@ -13,24 +13,18 @@ sap.ui.define(["sap/ui/core/mvc/Controller", "sap/ui/model/json/JSONModel"], fun
     },
 
     // ---- Recent client tokens (shared by all transaction screens) ----
-    // Each screen keeps its own recent-client list, persisted in
-    // localStorage so it survives page reloads. The list is exposed as a
-    // "recentModel" JSON model (/clients array) which the view renders as
-    // clickable tokens below the entry table.
+    // Each screen keeps its own recent-client list, held only in memory. It
+    // accumulates as you enter transactions and is preserved while navigating
+    // between screens, but a browser page refresh recreates the view and
+    // starts the list empty again. The list is exposed as a "recentModel"
+    // JSON model (/clients array) which the view renders as clickable tokens
+    // below the entry table.
 
     initRecentClients: function (sMachineType) {
-      this._recentClientsKey = "hisab.recentClients." + sMachineType;
-      var oModel = new JSONModel({ clients: this._loadRecentClients() });
-      this.getView().setModel(oModel, "recentModel");
-    },
-
-    _loadRecentClients: function () {
-      try {
-        var sRaw = window.localStorage.getItem(this._recentClientsKey);
-        var aClients = sRaw ? JSON.parse(sRaw) : [];
-        return Array.isArray(aClients) ? aClients : [];
-      } catch (e) {
-        return [];
+      // Only seed an empty list the first time this screen is shown in the
+      // current page load; keep whatever has accumulated on later visits.
+      if (!this.getView().getModel("recentModel")) {
+        this.getView().setModel(new JSONModel({ clients: [] }), "recentModel");
       }
     },
 
@@ -53,11 +47,6 @@ sap.ui.define(["sap/ui/core/mvc/Controller", "sap/ui/model/json/JSONModel"], fun
         aClients = aClients.slice(0, 12);
       }
       oModel.setProperty("/clients", aClients);
-      try {
-        window.localStorage.setItem(this._recentClientsKey, JSON.stringify(aClients));
-      } catch (e) {
-        // storage unavailable (private mode / quota) — tokens still work in-session
-      }
     },
 
     // Token pressed: drop the client name into the entry table's Client
