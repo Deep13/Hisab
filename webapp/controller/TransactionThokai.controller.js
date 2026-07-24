@@ -62,6 +62,8 @@ sap.ui.define(
         });
         // get First Row
         this.getFirstRow();
+        // Recent client tokens for this screen
+        this.initRecentClients("Thokai");
       },
 
       onpressBack: function (oEvent) {
@@ -134,6 +136,7 @@ sap.ui.define(
               machineType: "Thokai",
               total: temp.Rate * temp.Quantity,
             });
+            that.addRecentClient(temp.Client);
           } else {
             flag = false;
           }

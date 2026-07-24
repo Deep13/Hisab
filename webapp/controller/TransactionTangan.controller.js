@@ -26,6 +26,8 @@ sap.ui.define(
         this.updateValues();
         // get First Row
         this.getFirstRow();
+        // Recent client tokens for this screen
+        this.initRecentClients("Tangan");
       },
       updateValues: function () {
         var that = this;
@@ -160,6 +162,7 @@ sap.ui.define(
             },
           });
           that.saveClient(temp.Client);
+          that.addRecentClient(temp.Client);
         }
       },
       // onSaveTransaction: function (oEvent) {

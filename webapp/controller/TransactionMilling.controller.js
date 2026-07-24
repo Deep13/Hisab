@@ -28,6 +28,8 @@ sap.ui.define(
         this.updateValues();
         // get First Row
         this.getFirstRow();
+        // Recent client tokens for this screen
+        this.initRecentClients("Milling");
       },
       updateValues: function () {
         var that = this;
@@ -243,6 +245,7 @@ sap.ui.define(
             },
           });
           that.saveClient(temp.Client);
+          that.addRecentClient(temp.Client);
         }
       },
       onResetTransaction: function (oEvent) {

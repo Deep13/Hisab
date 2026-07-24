@@ -60,7 +60,13 @@
       "Bash(/c/xampp/php/php.exe -l php/process.php)",
       "Bash(python -c ' *)",
       "PowerShell($out = \"C:\\\\Users\\\\Deepak\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--xampp-htdocs-Hisab\\\\126a0cb4-8c49-426d-881d-14e35f3057f1\\\\scratchpad\\\\shots\"; & 'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe' --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1500,700 --virtual-time-budget=25000 --user-data-dir=\"$out\\\\profile\" --screenshot=\"$out\\\\final_main.png\" \"http://localhost/Hisab/webapp/index.html#/Main\" 2>&1 | Select-Object -Last 1)",
-      "Bash([ -x \"$MYSQL\" ])"
+      "Bash([ -x \"$MYSQL\" ])",
+      "Bash(curl -s -m 8 -X POST \"http://localhost:8080/Hisab/php/process.php\" --data \"method=getAllClients&data=%7B%7D\")",
+      "Bash(curl -s -m 8 -X POST \"http://localhost/Hisab/php/process.php\" --data \"method=getAllClients&data=%7B%7D\")",
+      "Bash(curl -s -m 8 -X POST \"http://localhost:8080/Hisab/php/process.php\" --data \"method=getRates&data=%7B%7D\")",
+      "Bash(curl -s -m 6 -o /dev/null -w \"8080 root HTTP %{http_code}\\\\n\" \"http://localhost:8080/Hisab/\")",
+      "Bash(curl -s -m 6 -o /dev/null -w \"8080 process HTTP %{http_code}\\\\n\" \"http://localhost:8080/Hisab/php/process.php\")",
+      "Bash(curl -s -m 6 -o /dev/null -w \"80 root HTTP %{http_code}\\\\n\" \"http://localhost/Hisab/\")"
     ]
   }
 }
