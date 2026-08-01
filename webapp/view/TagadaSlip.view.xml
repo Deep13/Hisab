@@ -11,6 +11,7 @@
                     <Title text="Tagada Slip"/>
                 </contentMiddle>
                 <contentRight>
+                    <Button text="Fetch Old Data" icon="sap-icon://history" press="onFetchOldData" class="sapUiTinyMarginEnd"/>
                     <Button text="Print Invoices" icon="sap-icon://document" press="onPrintInvoices" class="sapUiTinyMarginEnd"/>
                     <Button text="Download Excel" icon="sap-icon://excel-attachment" type="Emphasized" press="onDownloadExcel" class="sapUiTinyMarginEnd"/>
                     <Button text="Print" icon="sap-icon://print" type="Accept" press="onPrint"/>

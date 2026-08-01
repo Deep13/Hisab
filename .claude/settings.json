@@ -81,7 +81,16 @@
       "Bash(curl -s -X POST http://localhost/Hisab/php/process.php -d \"method=deleteNotice\" --data-urlencode 'data={\"id\":2}')",
       "PowerShell(foreach \\($f in @\\('webapp\\\\view\\\\Notice.view.xml','webapp\\\\view\\\\Main.view.xml'\\)\\) { try { [xml]\\(Get-Content -Raw $f\\) | Out-Null; \"$f OK\" } catch { \"$f FAILED: $\\($_.Exception.Message\\)\" } })",
       "PowerShell(foreach \\($f in @\\('webapp\\\\view\\\\Notice.view.xml','webapp\\\\view\\\\Invoice.view.xml'\\)\\) { try { [xml]\\(Get-Content -Raw $f\\) | Out-Null; \"$f OK\" } catch { \"$f FAILED: $\\($_.Exception.Message\\)\" } })",
-      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SHOW TABLES;\")"
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SHOW TABLES;\")",
+      "Bash(\"/c/xampp/php/php.exe\" -v)",
+      "Bash(cp \"C:/xampp/htdocs/Hisab-sql/Hisab/Factory 03.csv\" \"c:/xampp/htdocs/Hisab/data/Factory 03.csv\")",
+      "Bash(cp \"C:/xampp/htdocs/Hisab-sql/Hisab/Factory 04.csv\" \"c:/xampp/htdocs/Hisab/data/Factory 04.csv\")",
+      "PowerShell(try { [xml]\\(Get-Content -Raw 'webapp\\\\view\\\\TagadaSlip.view.xml'\\) | Out-Null; \"TagadaSlip.view.xml OK\" } catch { \"FAILED: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(Get-Process httpd -ErrorAction SilentlyContinue | Select-Object -First 3 Id, ProcessName; if \\(-not \\(Get-Process httpd -ErrorAction SilentlyContinue\\)\\) { \"Apache \\(httpd\\) is NOT running\" })",
+      "Bash(awk -F, 'NR>1 && NF>=3 {s+=$3; n++} END {print \"csv rows=\"n, \"csv OD sum=\"s}' \"Factory 03.csv\")",
+      "PowerShell(try { [xml]\\(Get-Content -Raw 'webapp\\\\fragments\\\\OldDataResult.fragment.xml'\\) | Out-Null; \"fragment OK\" } catch { \"FAILED: $\\($_.Exception.Message\\)\" })",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SELECT 'notice' t, COUNT\\(*\\) rows_ FROM notice UNION ALL SELECT 'notice_client', COUNT\\(*\\) FROM notice_client UNION ALL SELECT 'notice_setting', COUNT\\(*\\) FROM notice_setting;\")",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SELECT id, notice, active FROM notice; SELECT * FROM notice_setting;\")"
     ]
   }
 }

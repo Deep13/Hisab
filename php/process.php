@@ -44,7 +44,8 @@ $allowedMethods = [
     'getNotices',
     'saveNotice',
     'deleteNotice',
-    'setNoticesEnabled'
+    'setNoticesEnabled',
+    'getOldData'
 ];
 
 $method = isset($_POST["method"]) ? $_POST["method"] : '';
@@ -973,6 +974,58 @@ function saveNotice() {
 
     $conn->commit();
     return json_encode(["status" => "success", "id" => $id]);
+}
+
+// --- Old dues carried in from a hand-maintained CSV ---
+
+/**
+ * Reads `data/<office>.csv` (columns: Party Name, Current, OD, Total) so the
+ * Tagada Slip can pull in dues that predate the transaction data. The files are
+ * meant to be edited by hand in Excel, so anything unparseable is skipped
+ * rather than failing the whole load. The Total column is ignored: the screen
+ * recomputes it, which keeps a stale total in the file from being trusted.
+ */
+function getOldData() {
+    $obj = getPostData();
+    $office = trim($obj->office ?? '');
+
+    // The office name becomes part of a file path, so keep it to a safe shape.
+    if ($office === '' || !preg_match('/^[A-Za-z0-9 _-]+$/', $office)) {
+        return json_encode(["status" => "failed", "error" => "Invalid office name"]);
+    }
+
+    $file = __DIR__ . DIRECTORY_SEPARATOR . ".." . DIRECTORY_SEPARATOR . "data" . DIRECTORY_SEPARATOR . $office . ".csv";
+    if (!is_file($file)) {
+        return json_encode([
+            "status" => "failed",
+            "error" => "No old data file for " . $office . ". Expected data/" . $office . ".csv"
+        ]);
+    }
+
+    $handle = @fopen($file, "r");
+    if (!$handle) {
+        return json_encode(["status" => "failed", "error" => "Could not read data/" . $office . ".csv"]);
+    }
+
+    $rows = [];
+    while (($cols = fgetcsv($handle, 0, ",", "\"", "\\")) !== false) {
+        if (!isset($cols[0])) {
+            continue;
+        }
+        // Excel puts a BOM ahead of the very first cell.
+        $name = trim(preg_replace('/^\xEF\xBB\xBF/', '', (string)$cols[0]));
+        if ($name === "" || strcasecmp($name, "Party Name") === 0) {
+            continue;
+        }
+        $rows[] = [
+            "partyName" => $name,
+            "current" => isset($cols[1]) ? (float)str_replace(",", "", $cols[1]) : 0,
+            "od" => isset($cols[2]) ? (float)str_replace(",", "", $cols[2]) : 0,
+        ];
+    }
+    fclose($handle);
+
+    return json_encode(["status" => "success", "rows" => $rows]);
 }
 
 function deleteNotice() {

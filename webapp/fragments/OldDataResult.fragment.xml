@@ -1,0 +1,37 @@
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
+	<Dialog id="idOldDataDialog" title="Old Data Loaded" class="sapUiSizeCompact"
+		contentWidth="36rem" resizable="true">
+		<content>
+			<MessageStrip text="{oldDataModel>/summary}" type="Success" showIcon="true"
+				class="sapUiSmallMargin" />
+			<Table id="idOldDataTable" inset="false" fixedLayout="false"
+				items="{oldDataModel>/updated}">
+				<headerToolbar>
+					<OverflowToolbar>
+						<Title text="Updated parties" />
+					</OverflowToolbar>
+				</headerToolbar>
+				<columns>
+					<Column><Label text="Party Name" /></Column>
+					<Column width="7rem" hAlign="End"><Label text="Previous OD" /></Column>
+					<Column width="7rem" hAlign="End"><Label text="New OD" /></Column>
+					<Column width="7rem" hAlign="End"><Label text="Total" /></Column>
+				</columns>
+				<items>
+					<ColumnListItem>
+						<cells>
+							<Text text="{oldDataModel>partyName}" />
+							<Text text="{oldDataModel>oldOd}" />
+							<ObjectNumber number="{oldDataModel>newOd}"
+								state="{= ${oldDataModel>newOd} === ${oldDataModel>oldOd} ? 'None' : 'Success' }" />
+							<Text text="{oldDataModel>total}" />
+						</cells>
+					</ColumnListItem>
+				</items>
+			</Table>
+		</content>
+		<endButton>
+			<Button text="Close" press="onCloseOldDataDialog" />
+		</endButton>
+	</Dialog>
+</core:FragmentDefinition>

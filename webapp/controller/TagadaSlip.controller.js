@@ -3,9 +3,11 @@ sap.ui.define(
     "../controller/BaseController",
     "sap/ui/model/json/JSONModel",
     "sap/m/MessageBox",
+    "sap/m/MessageToast",
     "sap/m/BusyDialog",
+    "sap/ui/core/Fragment",
   ],
-  function (Controller, JSONModel, MessageBox, BusyDialog) {
+  function (Controller, JSONModel, MessageBox, MessageToast, BusyDialog, Fragment) {
     "use strict";
 
     var MONTHS = [
@@ -214,6 +216,155 @@ sap.ui.define(
           grand += parseFloat(r.total) || 0;
         });
         this.byId("idGrandTotal").setText("Grand Total: " + grand);
+      },
+
+      // ==================== OLD DATA (CSV) ====================
+
+      // Old dues live in data/<office>.csv and are maintained by hand, so they
+      // are pulled in on demand rather than loaded with the month's figures.
+      onFetchOldData: function () {
+        var that = this;
+        var office = this.byId("idOffice").getSelectedKey();
+
+        if (!office) {
+          return;
+        }
+
+        sap.ui.core.BusyIndicator.show(0);
+        $.ajax({
+          url: this.uri,
+          type: "POST",
+          data: {
+            method: "getOldData",
+            data: JSON.stringify({ office: office })
+          },
+          dataType: "json",
+          success: function (res) {
+            sap.ui.core.BusyIndicator.hide();
+            if (!res || res.status !== "success") {
+              MessageBox.error((res && res.error) || "Could not load the old data file");
+              return;
+            }
+            that._mergeOldData(res.rows || [], office);
+          },
+          error: function (request) {
+            sap.ui.core.BusyIndicator.hide();
+            MessageBox.error("Could not load the old data file: " + request.responseText);
+          }
+        });
+      },
+
+      /**
+       * Brings the file's rows into the table. A party already on the table
+       * keeps its live Current figure and only takes the OD across, so nothing
+       * is listed twice - a duplicate party name would also break the OD map
+       * used when printing invoices. Parties not on the table are appended.
+       */
+      _mergeOldData: function (oldRows, office) {
+        if (oldRows.length === 0) {
+          MessageBox.information("data/" + office + ".csv has no rows yet");
+          return;
+        }
+
+        var oModel = this.getView().getModel("tagadaModel");
+        if (!oModel) {
+          oModel = new JSONModel({ rows: [] });
+          oModel.setSizeLimit(500);
+          this.getView().setModel(oModel, "tagadaModel");
+        }
+        var rows = oModel.getProperty("/rows") || [];
+
+        var indexByName = {};
+        rows.forEach(function (r, i) {
+          if (r.partyName) {
+            indexByName[r.partyName.trim().toLowerCase()] = i;
+          }
+        });
+
+        // Updating an existing party overwrites an OD that may have been typed
+        // in by hand, so every change is reported back for a quick check.
+        var updated = [];
+        var added = 0;
+
+        oldRows.forEach(function (oldRow) {
+          var key = oldRow.partyName.trim().toLowerCase();
+          var od = parseFloat(oldRow.od) || 0;
+
+          if (indexByName[key] !== undefined) {
+            var row = rows[indexByName[key]];
+            var previousOd = parseFloat(row.od) || 0;
+            row.od = od;
+            row.total = (parseFloat(row.current) || 0) + od;
+            updated.push({
+              partyName: row.partyName,
+              oldOd: previousOd,
+              newOd: od,
+              total: row.total
+            });
+          } else {
+            var current = parseFloat(oldRow.current) || 0;
+            rows.push({
+              sl: 0,
+              partyName: oldRow.partyName,
+              current: current,
+              od: od,
+              total: current + od
+            });
+            indexByName[key] = rows.length - 1;
+            added++;
+          }
+        });
+
+        for (var i = 0; i < rows.length; i++) {
+          rows[i].sl = i + 1;
+        }
+
+        oModel.setProperty("/rows", rows);
+        this._updateGrandTotal();
+
+        if (updated.length > 0) {
+          this._showOldDataResult(updated, added, office);
+        } else {
+          MessageToast.show("Old data from " + office + ": " + added + " added");
+        }
+      },
+
+      _showOldDataResult: function (updated, added, office) {
+        var that = this;
+        var sSummary =
+          updated.length + " existing " +
+          (updated.length === 1 ? "party was" : "parties were") +
+          " updated from " + office + ".csv" +
+          (added > 0 ? ", and " + added + " new " + (added === 1 ? "party was" : "parties were") + " added." : ".");
+
+        this.getView().setModel(
+          new JSONModel({ updated: updated, summary: sSummary }),
+          "oldDataModel"
+        );
+
+        if (this._pOldDataDialog) {
+          this._pOldDataDialog.then(function (oDialog) {
+            oDialog.open();
+          });
+          return;
+        }
+        this._pOldDataDialog = Fragment.load({
+          id: this.getView().getId(),
+          name: "Hisab.Hisab.fragments.OldDataResult",
+          controller: this,
+        }).then(function (oDialog) {
+          that.getView().addDependent(oDialog);
+          oDialog.open();
+          return oDialog;
+        });
+      },
+
+      onCloseOldDataDialog: function () {
+        if (this._pOldDataDialog) {
+          this._pOldDataDialog.then(function (oDialog) {
+            oDialog.close();
+          });
+        }
       },
 
       // ==================== PRINT ====================
