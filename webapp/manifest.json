@@ -175,6 +175,11 @@
           "name": "RateSettings",
           "pattern": "RateSettings",
           "target": "RateSettings"
+        },
+        {
+          "name": "Notice",
+          "pattern": "Notice",
+          "target": "Notice"
         }
       ],
       "targets": {
@@ -262,6 +267,11 @@
         "RateSettings": {
           "viewType": "XML",
           "viewName": "RateSettings"
+        },
+        "Notice": {
+          "viewType": "XML",
+          "transition": "slide",
+          "viewName": "Notice"
         }
       }
     }

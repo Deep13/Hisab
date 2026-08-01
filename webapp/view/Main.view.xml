@@ -137,6 +137,11 @@
 											<ImageContent src="sap-icon://settings"/>
 										</TileContent>
 									</GenericTile>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Notice" subheader="Printed on invoices" press="onPressNotice">
+										<TileContent>
+											<ImageContent src="sap-icon://notification-2"/>
+										</TileContent>
+									</GenericTile>
 								</content>
 							</Panel>
 						</HBox>

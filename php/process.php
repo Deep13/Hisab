@@ -40,7 +40,11 @@ $allowedMethods = [
     'insertMachineExpense',
     'getMachineExpenseReport',
     'getRates',
-    'updateRate'
+    'updateRate',
+    'getNotices',
+    'saveNotice',
+    'deleteNotice',
+    'setNoticesEnabled'
 ];
 
 $method = isset($_POST["method"]) ? $_POST["method"] : '';
@@ -830,6 +834,167 @@ function updateRate() {
         return json_encode(["status" => "success"]);
     }
     return json_encode(["status" => "failed"]);
+}
+
+// --- Notices printed on client invoices ---
+
+/**
+ * The master switch plus every notice with its client list. An empty `clients`
+ * array means the notice is global and applies to every client's invoice.
+ * With `enabled` = 0 nothing is printed regardless of the notices themselves.
+ */
+function getNotices() {
+    $conn = getDbConnection();
+
+    $enabled = 1;
+    $setting = @$conn->query("SELECT enabled FROM notice_setting WHERE id = 1");
+    if ($setting && ($row = $setting->fetch_assoc())) {
+        $enabled = (int)$row["enabled"];
+    }
+
+    $result = @$conn->query("SELECT id, notice, active, createdOn FROM notice ORDER BY id DESC");
+    if (!$result) {
+        // Table likely missing
+        return json_encode(["enabled" => $enabled, "notices" => []]);
+    }
+
+    $notices = [];
+    while ($row = $result->fetch_assoc()) {
+        $row["id"] = (int)$row["id"];
+        $row["active"] = (int)$row["active"];
+        $row["clients"] = [];
+        $notices[$row["id"]] = $row;
+    }
+    if (!$notices) {
+        return json_encode(["enabled" => $enabled, "notices" => []]);
+    }
+
+    $mapping = @$conn->query("SELECT notice_id, client FROM notice_client ORDER BY client ASC");
+    if ($mapping) {
+        while ($row = $mapping->fetch_assoc()) {
+            $id = (int)$row["notice_id"];
+            if (isset($notices[$id])) {
+                $notices[$id]["clients"][] = $row["client"];
+            }
+        }
+    }
+
+    return json_encode(["enabled" => $enabled, "notices" => array_values($notices)]);
+}
+
+/**
+ * Flips the master switch that decides whether notices are printed at all.
+ */
+function setNoticesEnabled() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $enabled = !empty($obj->enabled) ? 1 : 0;
+
+    $stmt = @$conn->prepare(
+        "INSERT INTO `notice_setting` (`id`, `enabled`) VALUES (1, ?)
+         ON DUPLICATE KEY UPDATE `enabled` = VALUES(`enabled`)"
+    );
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'notice_setting' does not exist. Please run sql/notice.sql."]);
+    }
+    $stmt->bind_param("i", $enabled);
+
+    if ($stmt->execute()) {
+        return json_encode(["status" => "success", "enabled" => $enabled]);
+    }
+    return json_encode(["status" => "failed", "error" => "Could not update the notice setting"]);
+}
+
+/**
+ * Creates a notice when `id` is missing, otherwise updates it. The client list
+ * is always replaced wholesale, so removing every client turns the notice into
+ * a global one.
+ */
+function saveNotice() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $id = isset($obj->id) && $obj->id !== "" ? (int)$obj->id : 0;
+    $notice = trim($obj->notice ?? '');
+    $active = !empty($obj->active) ? 1 : 0;
+    $clients = isset($obj->clients) && is_array($obj->clients) ? $obj->clients : [];
+
+    if ($notice === '') {
+        return json_encode(["status" => "failed", "error" => "Notice text is required"]);
+    }
+
+    $conn->begin_transaction();
+
+    if ($id > 0) {
+        $stmt = @$conn->prepare("UPDATE `notice` SET `notice` = ?, `active` = ? WHERE `id` = ?");
+        if (!$stmt) {
+            $conn->rollback();
+            return json_encode(["status" => "failed", "error" => "Table 'notice' does not exist. Please run sql/notice.sql."]);
+        }
+        $stmt->bind_param("sii", $notice, $active, $id);
+        if (!$stmt->execute()) {
+            $conn->rollback();
+            return json_encode(["status" => "failed", "error" => "Could not update notice"]);
+        }
+
+        $stmt = $conn->prepare("DELETE FROM `notice_client` WHERE `notice_id` = ?");
+        $stmt->bind_param("i", $id);
+        if (!$stmt->execute()) {
+            $conn->rollback();
+            return json_encode(["status" => "failed", "error" => "Could not update notice clients"]);
+        }
+    } else {
+        $stmt = @$conn->prepare("INSERT INTO `notice` (`notice`, `active`, `createdOn`) VALUES (?, ?, CURDATE())");
+        if (!$stmt) {
+            $conn->rollback();
+            return json_encode(["status" => "failed", "error" => "Table 'notice' does not exist. Please run sql/notice.sql."]);
+        }
+        $stmt->bind_param("si", $notice, $active);
+        if (!$stmt->execute()) {
+            $conn->rollback();
+            return json_encode(["status" => "failed", "error" => "Could not create notice"]);
+        }
+        $id = $conn->insert_id;
+    }
+
+    if ($clients) {
+        $stmt = $conn->prepare("INSERT IGNORE INTO `notice_client` (`notice_id`, `client`) VALUES (?, ?)");
+        foreach ($clients as $client) {
+            $client = trim((string)$client);
+            if ($client === '') {
+                continue;
+            }
+            $stmt->bind_param("is", $id, $client);
+            if (!$stmt->execute()) {
+                $conn->rollback();
+                return json_encode(["status" => "failed", "error" => "Could not save notice clients"]);
+            }
+        }
+    }
+
+    $conn->commit();
+    return json_encode(["status" => "success", "id" => $id]);
+}
+
+function deleteNotice() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $id = (int)($obj->id ?? 0);
+
+    if ($id <= 0) {
+        return json_encode(["status" => "failed", "error" => "Notice id is required"]);
+    }
+
+    // notice_client rows go with it via ON DELETE CASCADE.
+    $stmt = @$conn->prepare("DELETE FROM `notice` WHERE `id` = ?");
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'notice' does not exist. Please run sql/notice.sql."]);
+    }
+    $stmt->bind_param("i", $id);
+
+    if ($stmt->execute()) {
+        return json_encode(["status" => "success"]);
+    }
+    return json_encode(["status" => "failed", "error" => "Could not delete notice"]);
 }
 
 ?>

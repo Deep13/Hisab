@@ -16,6 +16,15 @@
 .border-top {
   border-top: 1px solid black;
 }
+/* Notice printed at the top of an invoice (Invoice screen and Tagada Slip) */
+.invoice-notice {
+  font-size: 16px;
+  font-weight: bold;
+  text-decoration: underline;
+  text-align: center;
+  white-space: pre-wrap;
+  padding: 2px 0;
+}
 .higlight:hover {
 	background:#807e7e73;
 }

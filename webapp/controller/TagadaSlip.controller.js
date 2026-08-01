@@ -3,8 +3,9 @@ sap.ui.define(
     "../controller/BaseController",
     "sap/ui/model/json/JSONModel",
     "sap/m/MessageBox",
+    "sap/m/BusyDialog",
   ],
-  function (Controller, JSONModel, MessageBox) {
+  function (Controller, JSONModel, MessageBox, BusyDialog) {
     "use strict";
 
     var MONTHS = [
@@ -314,11 +315,33 @@ sap.ui.define(
 
       // ==================== PRINT INVOICES ====================
 
+      // One invoice needs one round trip per client, so a factory with many
+      // clients takes a noticeable while before the print dialog appears.
+      _showPrintBusy: function (sText) {
+        if (!this._oPrintBusy) {
+          this._oPrintBusy = new BusyDialog({
+            title: "Print Invoices",
+            text: "Please wait..."
+          });
+          this.getView().addDependent(this._oPrintBusy);
+        }
+        this._oPrintBusy.setText(sText);
+        this._oPrintBusy.open();
+      },
+
+      _hidePrintBusy: function () {
+        if (this._oPrintBusy) {
+          this._oPrintBusy.close();
+        }
+      },
+
       onPrintInvoices: function () {
         var that = this;
         var office = this.byId("idOffice").getSelectedKey();
         var month = this.byId("idMonth").getSelectedKey();
         var year = this.byId("idYear").getSelectedKey();
+
+        this._showPrintBusy("Loading clients...");
 
         // Build OD map from current tagada table
         var odMap = {};
@@ -332,31 +355,44 @@ sap.ui.define(
           });
         }
 
-        $.ajax({
-          url: that.uri,
-          type: "POST",
-          data: {
-            method: "getAllClientsWithParam",
-            data: JSON.stringify({
-              month: month,
-              year: year,
-              machineType: "All",
-              officeType: office
-            })
-          },
-          dataType: "json",
-          success: function (clients) {
-            if (!clients || clients.length === 0) {
-              MessageBox.information("No clients found for the selected period");
-              return;
+        this.loadNotices(function (notices) {
+          that._notices = notices;
+          $.ajax({
+            url: that.uri,
+            type: "POST",
+            data: {
+              method: "getAllClientsWithParam",
+              data: JSON.stringify({
+                month: month,
+                year: year,
+                machineType: "All",
+                officeType: office
+              })
+            },
+            dataType: "json",
+            success: function (clients) {
+              if (!clients || clients.length === 0) {
+                that._hidePrintBusy();
+                MessageBox.information("No clients found for the selected period");
+                return;
+              }
+              var clientNames = clients.map(function (c) { return c.client; });
+              that._fetchAllInvoices(clientNames, month, year, office, odMap);
+            },
+            error: function () {
+              that._hidePrintBusy();
+              MessageBox.error("Failed to fetch clients");
             }
-            var clientNames = clients.map(function (c) { return c.client; });
-            that._fetchAllInvoices(clientNames, month, year, office, odMap);
-          },
-          error: function () {
-            MessageBox.error("Failed to fetch clients");
-          }
+          });
         });
+      },
+
+      _escapeHtml: function (text) {
+        return String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
       },
 
       _fetchAllInvoices: function (clientNames, month, year, office, odMap) {
@@ -364,6 +400,20 @@ sap.ui.define(
         var completed = 0;
         var allInvoices = [];
         var monthName = MONTHS[parseInt(month, 10) - 1];
+
+        // Clients whose invoice failed to load still count, otherwise a single
+        // failed request would leave the print waiting forever.
+        var onClientDone = function () {
+          completed++;
+          that._showPrintBusy(
+            "Preparing invoices " + completed + " of " + clientNames.length + "..."
+          );
+          if (completed === clientNames.length) {
+            that._openInvoicePrint(allInvoices);
+          }
+        };
+
+        this._showPrintBusy("Preparing invoices 0 of " + clientNames.length + "...");
 
         clientNames.forEach(function (clientName) {
           $.ajax({
@@ -387,17 +437,9 @@ sap.ui.define(
                 inv.finalTotal = inv.total + inv.od;
                 allInvoices.push(inv);
               }
-              completed++;
-              if (completed === clientNames.length) {
-                that._openInvoicePrint(allInvoices);
-              }
+              onClientDone();
             },
-            error: function () {
-              completed++;
-              if (completed === clientNames.length) {
-                that._openInvoicePrint(allInvoices);
-              }
-            }
+            error: onClientDone
           });
         });
       },
@@ -449,10 +491,14 @@ sap.ui.define(
       },
 
       _openInvoicePrint: function (allInvoices) {
+        var that = this;
         if (allInvoices.length === 0) {
+          this._hidePrintBusy();
           MessageBox.information("No invoice data found");
           return;
         }
+
+        this._showPrintBusy("Opening print preview...");
 
         allInvoices.sort(function (a, b) { return a.client.localeCompare(b.client); });
 
@@ -481,6 +527,8 @@ sap.ui.define(
         html += '.totals-row .label { min-width: 140px; text-align: right; padding-right: 20px; }';
         html += '.totals-row .value { min-width: 100px; text-align: right; }';
         html += '.totals-row.final { font-size: 20px; font-weight: bold; }';
+        html += '.notice-block { margin-bottom: 16px; }';
+        html += '.notice-item { font-size: 16px; font-weight: bold; text-decoration: underline; text-align: center; padding: 2px 0; white-space: pre-wrap; }';
         html += '@media print { .page { width: 100%; padding: 20px 15px; } }';
         html += '</style></head><body>';
 
@@ -489,6 +537,17 @@ sap.ui.define(
           html += '<div class="client-name">' + inv.client + '</div>';
           html += '<div class="cc">' + inv.cc + '</div>';
           html += '<div class="month-year">' + inv.month + ' ' + inv.year + '</div>';
+
+          // Notices sit above the figures so they are read first.
+          var notices = that.filterNoticesFor(that._notices, inv.client);
+          if (notices.length > 0) {
+            html += '<div class="notice-block">';
+            notices.forEach(function (n) {
+              html += '<div class="notice-item">*' + that._escapeHtml(n.notice) + '*</div>';
+            });
+            html += '</div>';
+          }
+
           html += '<div class="row header-row"><div class="col-left"></div><div class="col-right">Total</div></div>';
 
           var sections = [
@@ -525,15 +584,23 @@ sap.ui.define(
             html += '<div class="totals-row final"><span class="label">Grand Total:</span><span class="value">' + inv.total + '</span></div>';
           }
           html += '</div>';
+
           html += '</div>';
         });
 
         html += '</body></html>';
 
         var printWindow = window.open('', '_blank');
+        if (!printWindow) {
+          this._hidePrintBusy();
+          MessageBox.error("Please allow pop-ups for this site to print the invoices");
+          return;
+        }
         printWindow.document.write(html);
         printWindow.document.close();
         printWindow.focus();
+        // The print tab is up and focused, so the loader here has done its job.
+        this._hidePrintBusy();
         printWindow.onload = function () { printWindow.print(); };
       }
     });

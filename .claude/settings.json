@@ -67,7 +67,21 @@
       "Bash(curl -s -m 6 -o /dev/null -w \"8080 root HTTP %{http_code}\\\\n\" \"http://localhost:8080/Hisab/\")",
       "Bash(curl -s -m 6 -o /dev/null -w \"8080 process HTTP %{http_code}\\\\n\" \"http://localhost:8080/Hisab/php/process.php\")",
       "Bash(curl -s -m 6 -o /dev/null -w \"80 root HTTP %{http_code}\\\\n\" \"http://localhost/Hisab/\")",
-      "Bash(node --check \"c:\\\\xampp\\\\htdocs\\\\Hisab\\\\webapp\\\\controller\\\\BaseController.js\")"
+      "Bash(node --check \"c:\\\\xampp\\\\htdocs\\\\Hisab\\\\webapp\\\\controller\\\\BaseController.js\")",
+      "Bash(\"/c/xampp/php/php.exe\" -l php/process.php)",
+      "Bash(node --check webapp/controller/Notice.controller.js)",
+      "Bash(node --check webapp/controller/TagadaSlip.controller.js)",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab)",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"DESCRIBE notice; DESCRIBE notice_client;\")",
+      "Bash(curl -s -X POST http://localhost/Hisab/php/process.php -d \"method=saveNotice\" --data-urlencode 'data={\"notice\":\"TEST CLIENT NOTICE\",\"active\":1,\"clients\":[\"Aalam Bhai\",\"Abdhesh\"]}')",
+      "Bash(curl -s -X POST http://localhost/Hisab/php/process.php -d \"method=getNotices\" --data-urlencode 'data={}')",
+      "Bash(curl -s -X POST http://localhost/Hisab/php/process.php -d \"method=saveNotice\" --data-urlencode 'data={\"id\":2,\"notice\":\"TEST UPDATED\",\"active\":0,\"clients\":[]}')",
+      "Bash(curl -s -X POST http://localhost/Hisab/php/process.php -d \"method=saveNotice\" --data-urlencode 'data={\"notice\":\"  \",\"active\":1,\"clients\":[]}')",
+      "Bash(curl -s -X POST http://localhost/Hisab/php/process.php -d \"method=deleteNotice\" --data-urlencode 'data={\"id\":1}')",
+      "Bash(curl -s -X POST http://localhost/Hisab/php/process.php -d \"method=deleteNotice\" --data-urlencode 'data={\"id\":2}')",
+      "PowerShell(foreach \\($f in @\\('webapp\\\\view\\\\Notice.view.xml','webapp\\\\view\\\\Main.view.xml'\\)\\) { try { [xml]\\(Get-Content -Raw $f\\) | Out-Null; \"$f OK\" } catch { \"$f FAILED: $\\($_.Exception.Message\\)\" } })",
+      "PowerShell(foreach \\($f in @\\('webapp\\\\view\\\\Notice.view.xml','webapp\\\\view\\\\Invoice.view.xml'\\)\\) { try { [xml]\\(Get-Content -Raw $f\\) | Out-Null; \"$f OK\" } catch { \"$f FAILED: $\\($_.Exception.Message\\)\" } })",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SHOW TABLES;\")"
     ]
   }
 }

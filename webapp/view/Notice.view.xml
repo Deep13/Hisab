@@ -1,0 +1,94 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+	controllerName="Hisab.Hisab.controller.Notice"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+	<Page title="Notices" showNavButton="true" navButtonPress="onpressBack"
+		titleAlignment="Center">
+		<content>
+			<MessageStrip
+				text="A notice is printed at the top of the invoices generated from Tagada Slip - Print Invoices and from Client Payment - Print Invoice. Leave the client list empty to print the notice on every invoice, or pick clients to print it only on their invoices."
+				type="Information" showIcon="true" class="sapUiSmallMargin" />
+
+			<Panel width="auto" class="sapUiSmallMargin" accessibleRole="Region">
+				<content>
+					<HBox alignItems="Center" class="sapUiSmallMargin">
+						<VBox class="sapUiMediumMarginEnd">
+							<Label text="Print notices on invoices" design="Bold" />
+							<Text text="Turn this off to stop printing every notice, without deleting any of them." />
+						</VBox>
+						<Switch id="idNoticesEnabled" state="true" change="onToggleNotices" />
+					</HBox>
+				</content>
+			</Panel>
+
+			<Panel width="auto" class="sapUiSmallMargin" accessibleRole="Region">
+				<headerToolbar>
+					<OverflowToolbar>
+						<Title id="idEditorTitle" text="New Notice" />
+						<ToolbarSpacer />
+						<Button text="Clear" icon="sap-icon://clear-all" type="Transparent" press="onNewNotice" />
+					</OverflowToolbar>
+				</headerToolbar>
+				<content>
+					<VBox class="sapUiSmallMargin">
+						<Label text="Notice" design="Bold" required="true" />
+						<TextArea id="idNoticeText" rows="3" width="100%" growing="true"
+							placeholder="e.g. Please clear the outstanding amount before the 10th of this month" />
+
+						<Label text="Clients (leave empty to print on every invoice)" design="Bold"
+							class="sapUiSmallMarginTop" />
+						<MultiComboBox id="idNoticeClients" width="100%"
+							placeholder="All clients"
+							items="{ClientModel>/Clients_results}">
+							<core:Item key="{ClientModel>client}" text="{ClientModel>client}" />
+						</MultiComboBox>
+
+						<HBox alignItems="Center" class="sapUiSmallMarginTop">
+							<Label text="Active" design="Bold" class="sapUiTinyMarginEnd" />
+							<Switch id="idNoticeActive" state="true" />
+						</HBox>
+					</VBox>
+				</content>
+			</Panel>
+
+			<Table id="idNoticeTable" class="sapUiSmallMargin" inset="false"
+				fixedLayout="false" width="auto" items="{noticeModel>/notices}">
+				<headerToolbar>
+					<OverflowToolbar>
+						<Title text="Saved Notices" />
+					</OverflowToolbar>
+				</headerToolbar>
+				<columns>
+					<Column><Label text="Notice" /></Column>
+					<Column width="20rem" demandPopin="true" minScreenWidth="Tablet" popinDisplay="Inline">
+						<Label text="Applies To" />
+					</Column>
+					<Column width="7rem" hAlign="Center" demandPopin="true" minScreenWidth="Tablet" popinDisplay="Inline">
+						<Label text="Active" />
+					</Column>
+					<Column width="9rem" hAlign="Center"><Label text="" /></Column>
+				</columns>
+				<items>
+					<ColumnListItem>
+						<cells>
+							<Text text="{noticeModel>notice}" />
+							<Text text="{ path: 'noticeModel>clients', formatter: '.formatClients' }" />
+							<ObjectStatus
+								text="{= ${noticeModel>active} === 1 ? 'Active' : 'Inactive' }"
+								state="{= ${noticeModel>active} === 1 ? 'Success' : 'Error' }" />
+							<HBox justifyContent="Center">
+								<Button icon="sap-icon://edit" type="Transparent" tooltip="Edit notice" press="onEditNotice" />
+								<Button icon="sap-icon://delete" type="Transparent" tooltip="Delete notice" press="onDeleteNotice" />
+							</HBox>
+						</cells>
+					</ColumnListItem>
+				</items>
+			</Table>
+		</content>
+		<footer>
+			<OverflowToolbar>
+				<ToolbarSpacer />
+				<Button type="Accept" text="Save Notice" icon="sap-icon://save" press="onSaveNotice" />
+			</OverflowToolbar>
+		</footer>
+	</Page>
+</mvc:View>

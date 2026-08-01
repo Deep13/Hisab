@@ -25,6 +25,12 @@
 			<HBox alignItems="Center" alignContent="Center" justifyContent="Center" width="100%">
 				<Title level="H2" text="{viewModel>/month} {viewModel>/year}"/>
 			</HBox>
+			<!-- Notices sit above the figures so they are read first -->
+			<VBox items="{viewModel>/notices}" width="100%">
+				<HBox alignItems="Center" justifyContent="Center" width="100%">
+					<Text class="invoice-notice" text="{viewModel>text}"/>
+				</HBox>
+			</VBox>
 			<HBox>
 				<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
 					<Title level="H1" titleStyle="H3" text=""/>

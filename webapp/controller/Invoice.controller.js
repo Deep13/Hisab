@@ -160,7 +160,20 @@ sap.ui.define(
 			invoiceData.Tangan = invoiceObjData.Tangan;
             
             invoiceData.total = total;
-            that.getView().setModel(new JSONModel(invoiceData), "viewModel");
+            invoiceData.notices = [];
+            var oViewModel = new JSONModel(invoiceData);
+            that.getView().setModel(oViewModel, "viewModel");
+
+            // Notices are maintained in the Notice screen and printed above the
+            // figures. They arrive separately so the invoice never waits on them.
+            that.loadNotices(function (aNotices) {
+              oViewModel.setProperty(
+                "/notices",
+                that.filterNoticesFor(aNotices, oData.Client).map(function (oNotice) {
+                  return { text: "*" + oNotice.notice + "*" };
+                })
+              );
+            });
           },
           error: function (request, error) {
             console.log(error);

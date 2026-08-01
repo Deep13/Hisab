@@ -12,6 +12,52 @@ sap.ui.define(["sap/ui/core/mvc/Controller", "sap/ui/model/json/JSONModel"], fun
       return "localhost/Hisab/php/process.php";
     },
 
+    // ---- Invoice notices (shared by Tagada Slip and the Invoice screen) ----
+    // Notices are maintained in the Notice screen and printed at the top of a
+    // client's invoice.
+
+    // Yields the notices that may be printed: an empty list when the master
+    // switch is off, and also on failure, since a notice must never block a print.
+    loadNotices: function (fnDone) {
+      $.ajax({
+        url: "http://" + this.getHost(),
+        type: "POST",
+        data: { method: "getNotices", data: JSON.stringify({}) },
+        dataType: "json",
+        success: function (oResult) {
+          if (!oResult || oResult.enabled !== 1) {
+            fnDone([]);
+            return;
+          }
+          fnDone(oResult.notices || []);
+        },
+        error: function () {
+          fnDone([]);
+        },
+      });
+    },
+
+    // Active notices for one client: the global ones (no client picked on the
+    // notice) plus the ones this client was explicitly picked for. A combined
+    // "All" invoice covers many clients, so it only carries the global ones.
+    filterNoticesFor: function (aNotices, sClient) {
+      var sName = String(sClient || "").trim().toLowerCase();
+      return (aNotices || []).filter(function (oNotice) {
+        if (oNotice.active !== 1) {
+          return false;
+        }
+        if (!oNotice.clients || oNotice.clients.length === 0) {
+          return true;
+        }
+        if (sName === "all") {
+          return false;
+        }
+        return oNotice.clients.some(function (sPicked) {
+          return String(sPicked).trim().toLowerCase() === sName;
+        });
+      });
+    },
+
     // ---- Recent client tokens (shared by all transaction screens) ----
     // Each screen keeps its own recent-client list, held only in memory. It
     // accumulates as you enter transactions and is preserved while navigating
