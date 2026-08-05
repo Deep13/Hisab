@@ -180,6 +180,21 @@
           "name": "Notice",
           "pattern": "Notice",
           "target": "Notice"
+        },
+        {
+          "name": "DailyKhata",
+          "pattern": "DailyKhata",
+          "target": "DailyKhata"
+        },
+        {
+          "name": "OpeningBalance",
+          "pattern": "OpeningBalance",
+          "target": "OpeningBalance"
+        },
+        {
+          "name": "ClientLedger",
+          "pattern": "ClientLedger",
+          "target": "ClientLedger"
         }
       ],
       "targets": {
@@ -272,6 +287,21 @@
           "viewType": "XML",
           "transition": "slide",
           "viewName": "Notice"
+        },
+        "DailyKhata": {
+          "viewType": "XML",
+          "transition": "slide",
+          "viewName": "DailyKhata"
+        },
+        "OpeningBalance": {
+          "viewType": "XML",
+          "transition": "slide",
+          "viewName": "OpeningBalance"
+        },
+        "ClientLedger": {
+          "viewType": "XML",
+          "transition": "slide",
+          "viewName": "ClientLedger"
         }
       }
     }

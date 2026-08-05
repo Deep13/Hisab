@@ -45,7 +45,17 @@ $allowedMethods = [
     'saveNotice',
     'deleteNotice',
     'setNoticesEnabled',
-    'getOldData'
+    'getOldData',
+    'getDailyKhata',
+    'saveKhataEntry',
+    'deleteKhataEntry',
+    'getKhataOpening',
+    'setKhataOpening',
+    'getClientOpenings',
+    'saveClientOpenings',
+    'getClientBalances',
+    'getClientLedger',
+    'getKhataMonthlySummary'
 ];
 
 $method = isset($_POST["method"]) ? $_POST["method"] : '';
@@ -974,6 +984,683 @@ function saveNotice() {
 
     $conn->commit();
     return json_encode(["status" => "success", "id" => $id]);
+}
+
+// --- Daily Khata (day book) ---
+//
+// Machine expenses are stored in `service`, not in `daily_khata`, so one
+// expense is one row no matter which screen records it. Everything below
+// therefore reads debits from both tables.
+
+// Credit categories need a client only for 'client_payment'.
+function khataCategories() {
+    return [
+        "credit" => ["client_payment", "thaktha_bhara", "other"],
+        "debit" => ["churi", "buff_paper", "mobil", "bhussi", "v_belt", "other"],
+    ];
+}
+
+// The one-time cash-in-hand the day book starts from.
+function khataOpeningRow($conn) {
+    $result = @$conn->query("SELECT opening_date, amount FROM khata_opening WHERE id = 1");
+    if ($result && ($row = $result->fetch_assoc())) {
+        return ["opening_date" => $row["opening_date"], "amount" => (float)$row["amount"]];
+    }
+    return ["opening_date" => null, "amount" => 0.0];
+}
+
+/**
+ * Net movement (credits - debits) strictly before $date, so a day's opening
+ * balance is always derived rather than stored. Entries dated before the
+ * opening date are ignored: the opening figure already accounts for them.
+ */
+function khataNetBefore($conn, $date, $openingDate) {
+    $net = 0.0;
+
+    $sql = "SELECT direction, COALESCE(SUM(amount), 0) AS total FROM daily_khata WHERE entry_date < ?";
+    $params = [$date];
+    $types = "s";
+    if ($openingDate) {
+        $sql .= " AND entry_date >= ?";
+        $params[] = $openingDate;
+        $types .= "s";
+    }
+    $sql .= " GROUP BY direction";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $net += ($row["direction"] === "credit" ? 1 : -1) * (float)$row["total"];
+    }
+
+    // Machine expenses are debits too.
+    $sql = "SELECT COALESCE(SUM(Amount), 0) AS total FROM service WHERE servicedOn < ?";
+    $params = [$date];
+    $types = "s";
+    if ($openingDate) {
+        $sql .= " AND servicedOn >= ?";
+        $params[] = $openingDate;
+        $types .= "s";
+    }
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $net -= (float)$row["total"];
+
+    return $net;
+}
+
+/**
+ * One day of the book: what was carried in, that day's credits and debits, and
+ * the closing balance that carries to the next day.
+ */
+function getDailyKhata() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $date = $obj->date ?? '';
+
+    if ($date === '') {
+        return json_encode(["status" => "failed", "error" => "Date is required"]);
+    }
+
+    $opening = @$conn->query("SHOW TABLES LIKE 'daily_khata'");
+    if (!$opening || $opening->num_rows === 0) {
+        return json_encode(["status" => "failed", "error" => "Table 'daily_khata' does not exist. Please run sql/daily_khata.sql."]);
+    }
+
+    $openingRow = khataOpeningRow($conn);
+    $carried = $openingRow["amount"] + khataNetBefore($conn, $date, $openingRow["opening_date"]);
+
+    $credits = [];
+    $debits = [];
+
+    $stmt = $conn->prepare(
+        "SELECT id, direction, category, client, note, amount
+         FROM daily_khata WHERE entry_date = ? ORDER BY id ASC"
+    );
+    $stmt->bind_param("s", $date);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $entry = [
+            "id" => (int)$row["id"],
+            "source" => "khata",
+            "category" => $row["category"],
+            "client" => $row["client"],
+            "note" => $row["note"],
+            "amount" => (float)$row["amount"],
+            "cc" => "",
+            "machineName" => "",
+        ];
+        if ($row["direction"] === "credit") {
+            $credits[] = $entry;
+        } else {
+            $debits[] = $entry;
+        }
+    }
+
+    // That day's machine expenses, read straight from the Machine Expenses data.
+    $stmt = $conn->prepare(
+        "SELECT dateTime, cc, machineName, serviceName, Amount
+         FROM service WHERE servicedOn = ? ORDER BY dateTime ASC"
+    );
+    $stmt->bind_param("s", $date);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $debits[] = [
+            "id" => 0,
+            "source" => "service",
+            "serviceDt" => $row["dateTime"],
+            "category" => "machine_expense",
+            "client" => null,
+            "note" => $row["serviceName"],
+            "amount" => (float)$row["Amount"],
+            "cc" => $row["cc"],
+            "machineName" => $row["machineName"],
+        ];
+    }
+
+    $totalCredit = 0.0;
+    foreach ($credits as $c) { $totalCredit += $c["amount"]; }
+    $totalDebit = 0.0;
+    foreach ($debits as $d) { $totalDebit += $d["amount"]; }
+
+    return json_encode([
+        "status" => "success",
+        "date" => $date,
+        "openingDate" => $openingRow["opening_date"],
+        "openingConfigured" => $openingRow["opening_date"] !== null,
+        "carried" => $carried,
+        "credits" => $credits,
+        "debits" => $debits,
+        "totalCredit" => $totalCredit,
+        "totalDebit" => $totalDebit,
+        "closing" => $carried + $totalCredit - $totalDebit,
+    ]);
+}
+
+/**
+ * Adds or updates one entry. A 'machine_expense' debit is written to `service`
+ * so it also shows up in the Machine Expenses module; everything else goes to
+ * `daily_khata`.
+ */
+function saveKhataEntry() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+
+    $date = $obj->entry_date ?? '';
+    $direction = $obj->direction ?? '';
+    $category = $obj->category ?? '';
+    $note = trim($obj->note ?? '');
+    $amount = (float)($obj->amount ?? 0);
+    $client = trim($obj->client ?? '');
+    $id = (int)($obj->id ?? 0);
+
+    if ($date === '') {
+        return json_encode(["status" => "failed", "error" => "Date is required"]);
+    }
+    $cats = khataCategories();
+    if ($category === "machine_expense") {
+        $direction = "debit";
+    } elseif (!isset($cats[$direction]) || !in_array($category, $cats[$direction], true)) {
+        return json_encode(["status" => "failed", "error" => "Unknown category for this direction"]);
+    }
+    if ($amount <= 0) {
+        return json_encode(["status" => "failed", "error" => "Amount must be greater than zero"]);
+    }
+    if ($category === "client_payment" && $client === '') {
+        return json_encode(["status" => "failed", "error" => "Select the client who paid"]);
+    }
+
+    if ($category === "machine_expense") {
+        $cc = trim($obj->cc ?? '');
+        $machineName = trim($obj->machineName ?? '');
+        if ($cc === '' || $machineName === '') {
+            return json_encode(["status" => "failed", "error" => "Select the office and machine"]);
+        }
+        if ($note === '') {
+            return json_encode(["status" => "failed", "error" => "Enter what the machine expense was for"]);
+        }
+
+        $stmt = $conn->prepare("SELECT `type` FROM `machine` WHERE `cc` = ? AND `machineName` = ?");
+        $stmt->bind_param("ss", $cc, $machineName);
+        $stmt->execute();
+        $machine = $stmt->get_result()->fetch_assoc();
+        if (!$machine) {
+            return json_encode(["status" => "failed", "error" => "Unknown machine"]);
+        }
+        $type = $machine["type"];
+
+        $serviceDt = trim($obj->serviceDt ?? '');
+        if ($serviceDt !== '') {
+            $stmt = $conn->prepare(
+                "UPDATE `service` SET `cc` = ?, `machineName` = ?, `type` = ?, `servicedOn` = ?,
+                 `serviceName` = ?, `Amount` = ? WHERE `dateTime` = ?"
+            );
+            $stmt->bind_param("sssssds", $cc, $machineName, $type, $date, $note, $amount, $serviceDt);
+        } else {
+            $stmt = $conn->prepare(
+                "INSERT INTO `service` (`cc`, `servicedOn`, `serviceName`, `machineName`, `type`, `Amount`)
+                 VALUES (?, ?, ?, ?, ?, ?)"
+            );
+            $stmt->bind_param("sssssd", $cc, $date, $note, $machineName, $type, $amount);
+        }
+
+        if ($stmt->execute()) {
+            return json_encode(["status" => "success"]);
+        }
+        return json_encode(["status" => "failed", "error" => "Could not save the machine expense"]);
+    }
+
+    $clientValue = $category === "client_payment" ? $client : null;
+
+    if ($id > 0) {
+        $stmt = @$conn->prepare(
+            "UPDATE `daily_khata` SET `entry_date` = ?, `direction` = ?, `category` = ?,
+             `client` = ?, `note` = ?, `amount` = ? WHERE `id` = ?"
+        );
+        if (!$stmt) {
+            return json_encode(["status" => "failed", "error" => "Table 'daily_khata' does not exist. Please run sql/daily_khata.sql."]);
+        }
+        $stmt->bind_param("sssssdi", $date, $direction, $category, $clientValue, $note, $amount, $id);
+    } else {
+        $stmt = @$conn->prepare(
+            "INSERT INTO `daily_khata` (`entry_date`, `direction`, `category`, `client`, `note`, `amount`)
+             VALUES (?, ?, ?, ?, ?, ?)"
+        );
+        if (!$stmt) {
+            return json_encode(["status" => "failed", "error" => "Table 'daily_khata' does not exist. Please run sql/daily_khata.sql."]);
+        }
+        $stmt->bind_param("sssssd", $date, $direction, $category, $clientValue, $note, $amount);
+    }
+
+    if ($stmt->execute()) {
+        return json_encode(["status" => "success", "id" => $id > 0 ? $id : $conn->insert_id]);
+    }
+    return json_encode(["status" => "failed", "error" => "Could not save the entry"]);
+}
+
+function deleteKhataEntry() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $source = $obj->source ?? 'khata';
+
+    if ($source === "service") {
+        $serviceDt = trim($obj->serviceDt ?? '');
+        if ($serviceDt === '') {
+            return json_encode(["status" => "failed", "error" => "Missing machine expense reference"]);
+        }
+        $stmt = $conn->prepare("DELETE FROM `service` WHERE `dateTime` = ?");
+        $stmt->bind_param("s", $serviceDt);
+        if ($stmt->execute()) {
+            return json_encode(["status" => "success"]);
+        }
+        return json_encode(["status" => "failed", "error" => "Could not delete the machine expense"]);
+    }
+
+    $id = (int)($obj->id ?? 0);
+    if ($id <= 0) {
+        return json_encode(["status" => "failed", "error" => "Entry id is required"]);
+    }
+    $stmt = @$conn->prepare("DELETE FROM `daily_khata` WHERE `id` = ?");
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'daily_khata' does not exist. Please run sql/daily_khata.sql."]);
+    }
+    $stmt->bind_param("i", $id);
+    if ($stmt->execute()) {
+        return json_encode(["status" => "success"]);
+    }
+    return json_encode(["status" => "failed", "error" => "Could not delete the entry"]);
+}
+
+function getKhataOpening() {
+    $conn = getDbConnection();
+    $row = khataOpeningRow($conn);
+    return json_encode([
+        "status" => "success",
+        "opening_date" => $row["opening_date"],
+        "amount" => $row["amount"],
+        "configured" => $row["opening_date"] !== null,
+    ]);
+}
+
+function setKhataOpening() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $date = $obj->opening_date ?? '';
+    $amount = (float)($obj->amount ?? 0);
+
+    if ($date === '') {
+        return json_encode(["status" => "failed", "error" => "Opening date is required"]);
+    }
+
+    $stmt = @$conn->prepare(
+        "INSERT INTO `khata_opening` (`id`, `opening_date`, `amount`) VALUES (1, ?, ?)
+         ON DUPLICATE KEY UPDATE `opening_date` = VALUES(`opening_date`), `amount` = VALUES(`amount`)"
+    );
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'khata_opening' does not exist. Please run sql/daily_khata.sql."]);
+    }
+    $stmt->bind_param("sd", $date, $amount);
+    if ($stmt->execute()) {
+        return json_encode(["status" => "success"]);
+    }
+    return json_encode(["status" => "failed", "error" => "Could not save the opening balance"]);
+}
+
+/** Every client in the master, with the opening balance recorded so far. */
+function getClientOpenings() {
+    $conn = getDbConnection();
+    $openings = [];
+    $result = @$conn->query("SELECT client, amount, as_of_date FROM client_opening");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $openings[strtolower(trim($row["client"]))] = [
+                "amount" => (float)$row["amount"],
+                "as_of_date" => $row["as_of_date"],
+            ];
+        }
+    }
+
+    $rows = [];
+    $result = $conn->query("SELECT client FROM masterclient ORDER BY client ASC");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $key = strtolower(trim($row["client"]));
+            $rows[] = [
+                "client" => $row["client"],
+                "amount" => isset($openings[$key]) ? $openings[$key]["amount"] : 0,
+                "as_of_date" => isset($openings[$key]) ? $openings[$key]["as_of_date"] : null,
+            ];
+        }
+    }
+    return json_encode(["status" => "success", "rows" => $rows]);
+}
+
+/** Saves the whole opening-balance sheet in one round trip. */
+function saveClientOpenings() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $rows = isset($obj->rows) && is_array($obj->rows) ? $obj->rows : [];
+    $asOf = $obj->as_of_date ?? null;
+
+    if (!$rows) {
+        return json_encode(["status" => "failed", "error" => "Nothing to save"]);
+    }
+
+    $stmt = @$conn->prepare(
+        "INSERT INTO `client_opening` (`client`, `amount`, `as_of_date`) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE `amount` = VALUES(`amount`), `as_of_date` = VALUES(`as_of_date`)"
+    );
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'client_opening' does not exist. Please run sql/daily_khata.sql."]);
+    }
+
+    $conn->begin_transaction();
+    $saved = 0;
+    foreach ($rows as $row) {
+        $client = trim($row->client ?? '');
+        if ($client === '') {
+            continue;
+        }
+        $amount = (float)($row->amount ?? 0);
+        $stmt->bind_param("sds", $client, $amount, $asOf);
+        if (!$stmt->execute()) {
+            $conn->rollback();
+            return json_encode(["status" => "failed", "error" => "Could not save opening balances"]);
+        }
+        $saved++;
+    }
+    $conn->commit();
+
+    return json_encode(["status" => "success", "saved" => $saved]);
+}
+
+/**
+ * Opening balances keyed by lowercased client name. `cutoff` is the period
+ * (YYYYMM) the opening figure was taken at: anything billed before it is
+ * already inside the opening amount and must not be counted again. A client
+ * with no opening row has cutoff 0, so their whole history counts.
+ */
+function clientOpeningMap($conn) {
+    $map = [];
+    $result = @$conn->query("SELECT client, amount, as_of_date FROM client_opening");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $cutoff = 0;
+            if (!empty($row["as_of_date"])) {
+                $ts = strtotime($row["as_of_date"]);
+                $cutoff = (int)date("Y", $ts) * 100 + (int)date("n", $ts);
+            }
+            $map[strtolower(trim($row["client"]))] = [
+                "client" => trim($row["client"]),
+                "amount" => (float)$row["amount"],
+                "cutoff" => $cutoff,
+                "as_of_date" => $row["as_of_date"],
+            ];
+        }
+    }
+    return $map;
+}
+
+/**
+ * Per-client dues for a month. OD is what was owed going into the month:
+ * opening balance + everything billed since the opening cut-off but before
+ * this month - every payment received in that same window. The month's own
+ * charges stay in `billed`, so OD + billed never double counts.
+ *
+ * Thokai is left out of `billed` because it is left out of the invoice too.
+ */
+function getClientBalances() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $month = (int)($obj->month ?? 0);
+    $year = (int)($obj->year ?? 0);
+
+    if ($month < 1 || $month > 12 || $year < 2000) {
+        return json_encode(["status" => "failed", "error" => "Valid month and year are required"]);
+    }
+    $selected = $year * 100 + $month;
+    $firstOfMonth = sprintf("%04d-%02d-01", $year, $month);
+    $lastOfMonth = date("Y-m-t", strtotime($firstOfMonth));
+
+    $openings = clientOpeningMap($conn);
+
+    $byClient = [];
+    $touch = function (&$byClient, $name) use ($openings) {
+        $key = strtolower(trim($name));
+        if ($key === '') {
+            return null;
+        }
+        if (!isset($byClient[$key])) {
+            $byClient[$key] = [
+                "client" => trim($name),
+                "opening" => isset($openings[$key]) ? $openings[$key]["amount"] : 0.0,
+                "cutoff" => isset($openings[$key]) ? $openings[$key]["cutoff"] : 0,
+                "billedBefore" => 0.0,
+                "paidBefore" => 0.0,
+                "billed" => 0.0,
+                "paid" => 0.0,
+            ];
+        }
+        return $key;
+    };
+
+    foreach ($openings as $key => $o) {
+        $touch($byClient, $o["client"]);
+    }
+
+    // Grouped by period so each client's own cut-off can be applied.
+    $result = $conn->query(
+        "SELECT client, year, month, COALESCE(SUM(total), 0) AS billed
+         FROM transaction
+         WHERE machineType <> 'Thokai' AND client IS NOT NULL AND client <> ''
+         GROUP BY client, year, month"
+    );
+    while ($row = $result->fetch_assoc()) {
+        $key = $touch($byClient, $row["client"]);
+        if (!$key) {
+            continue;
+        }
+        $period = (int)$row["year"] * 100 + (int)$row["month"];
+        if ($period < $byClient[$key]["cutoff"] || $period > $selected) {
+            continue;
+        }
+        if ($period < $selected) {
+            $byClient[$key]["billedBefore"] += (float)$row["billed"];
+        } else {
+            $byClient[$key]["billed"] += (float)$row["billed"];
+        }
+    }
+
+    $stmt = @$conn->prepare(
+        "SELECT client, entry_date, COALESCE(SUM(amount), 0) AS paid
+         FROM daily_khata
+         WHERE direction = 'credit' AND category = 'client_payment'
+           AND client IS NOT NULL AND client <> ''
+         GROUP BY client, entry_date"
+    );
+    if ($stmt) {
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            $key = $touch($byClient, $row["client"]);
+            if (!$key) {
+                continue;
+            }
+            $ts = strtotime($row["entry_date"]);
+            $period = (int)date("Y", $ts) * 100 + (int)date("n", $ts);
+            if ($period < $byClient[$key]["cutoff"] || $period > $selected) {
+                continue;
+            }
+            if ($row["entry_date"] < $firstOfMonth) {
+                $byClient[$key]["paidBefore"] += (float)$row["paid"];
+            } elseif ($row["entry_date"] <= $lastOfMonth) {
+                $byClient[$key]["paid"] += (float)$row["paid"];
+            }
+        }
+    }
+
+    $rows = [];
+    foreach ($byClient as $entry) {
+        $od = $entry["opening"] + $entry["billedBefore"] - $entry["paidBefore"];
+        $entry["od"] = $od;
+        $entry["balance"] = $od + $entry["billed"] - $entry["paid"];
+        $rows[] = $entry;
+    }
+    usort($rows, function ($a, $b) {
+        return strcasecmp($a["client"], $b["client"]);
+    });
+
+    return json_encode(["status" => "success", "month" => $month, "year" => $year, "rows" => $rows]);
+}
+
+/** Month-by-month money history for one client, with a running balance. */
+function getClientLedger() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $client = trim($obj->client ?? '');
+
+    if ($client === '') {
+        return json_encode(["status" => "failed", "error" => "Client is required"]);
+    }
+
+    $opening = 0.0;
+    $cutoff = 0;
+    $openings = clientOpeningMap($conn);
+    $key = strtolower(trim($client));
+    if (isset($openings[$key])) {
+        $opening = $openings[$key]["amount"];
+        $cutoff = $openings[$key]["cutoff"];
+    }
+
+    $periods = [];
+    $touch = function (&$periods, $year, $month) {
+        $key = sprintf("%04d-%02d", $year, $month);
+        if (!isset($periods[$key])) {
+            $periods[$key] = ["year" => (int)$year, "month" => (int)$month, "billed" => 0.0, "paid" => 0.0];
+        }
+        return $key;
+    };
+
+    $stmt = $conn->prepare(
+        "SELECT year, month, COALESCE(SUM(total), 0) AS billed
+         FROM transaction
+         WHERE client = ? AND machineType <> 'Thokai'
+         GROUP BY year, month"
+    );
+    $stmt->bind_param("s", $client);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        // Periods before the opening cut-off are already inside the opening figure.
+        if ((int)$row["year"] * 100 + (int)$row["month"] < $cutoff) {
+            continue;
+        }
+        $key = $touch($periods, $row["year"], $row["month"]);
+        $periods[$key]["billed"] += (float)$row["billed"];
+    }
+
+    $payments = [];
+    $stmt = @$conn->prepare(
+        "SELECT entry_date, note, amount
+         FROM daily_khata
+         WHERE direction = 'credit' AND category = 'client_payment' AND client = ?
+         ORDER BY entry_date ASC, id ASC"
+    );
+    if ($stmt) {
+        $stmt->bind_param("s", $client);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            $ts = strtotime($row["entry_date"]);
+            if ((int)date("Y", $ts) * 100 + (int)date("n", $ts) < $cutoff) {
+                continue;
+            }
+            $key = $touch($periods, (int)date("Y", $ts), (int)date("n", $ts));
+            $periods[$key]["paid"] += (float)$row["amount"];
+            $payments[] = [
+                "date" => $row["entry_date"],
+                "note" => $row["note"],
+                "amount" => (float)$row["amount"],
+            ];
+        }
+    }
+
+    ksort($periods);
+    $running = $opening;
+    $rows = [];
+    foreach ($periods as $p) {
+        $running += $p["billed"] - $p["paid"];
+        $p["balance"] = $running;
+        $rows[] = $p;
+    }
+
+    return json_encode([
+        "status" => "success",
+        "client" => $client,
+        "opening" => $opening,
+        "rows" => $rows,
+        "payments" => $payments,
+        "balance" => $running,
+    ]);
+}
+
+/**
+ * Debit totals per category for a month, used to pre-fill the monthly P&L.
+ * Machine expenses come from `service` and land on the Maintenance line.
+ */
+function getKhataMonthlySummary() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $month = (int)($obj->month ?? 0);
+    $year = (int)($obj->year ?? 0);
+
+    if ($month < 1 || $month > 12 || $year < 2000) {
+        return json_encode(["status" => "failed", "error" => "Valid month and year are required"]);
+    }
+
+    $debits = [];
+    $credits = [];
+
+    $stmt = @$conn->prepare(
+        "SELECT direction, category, COALESCE(SUM(amount), 0) AS total
+         FROM daily_khata
+         WHERE YEAR(entry_date) = ? AND MONTH(entry_date) = ?
+         GROUP BY direction, category"
+    );
+    if ($stmt) {
+        $stmt->bind_param("ii", $year, $month);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            if ($row["direction"] === "debit") {
+                $debits[$row["category"]] = (float)$row["total"];
+            } else {
+                $credits[$row["category"]] = (float)$row["total"];
+            }
+        }
+    }
+
+    $stmt = $conn->prepare(
+        "SELECT COALESCE(SUM(Amount), 0) AS total FROM service
+         WHERE YEAR(servicedOn) = ? AND MONTH(servicedOn) = ?"
+    );
+    $stmt->bind_param("ii", $year, $month);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $debits["machine_expense"] = (float)$row["total"];
+
+    return json_encode([
+        "status" => "success",
+        "month" => $month,
+        "year" => $year,
+        "debits" => $debits,
+        "credits" => $credits,
+    ]);
 }
 
 // --- Old dues carried in from a hand-maintained CSV ---

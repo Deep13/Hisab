@@ -68,13 +68,6 @@
 					</items>
 				</Table>
 			</VBox>
-			<VBox class="sapUiSmallMargin" visible="{= ${recentModel>/clients}.length &gt; 0}">
-				<Label text="Recent Clients" design="Bold" />
-				<HBox wrap="Wrap" class="sapUiTinyMarginTop" items="{recentModel>/clients}">
-					<Button text="{recentModel>}" type="Transparent" icon="sap-icon://person-placeholder"
-						press="onSelectRecentClient" class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
-				</HBox>
-			</VBox>
 		</content>
 		<!--Footer
 		to perform Operation : Save and Reset-->

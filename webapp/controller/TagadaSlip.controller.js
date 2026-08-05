@@ -64,35 +64,69 @@ sap.ui.define(
         // Show loader
         sap.ui.core.BusyIndicator.show(0);
 
-        // Get all clients for this office/month/year
+        // Dues carried in from earlier months, so OD does not have to be typed.
+        // A failed load leaves OD at 0 rather than blocking the slip.
         $.ajax({
           url: that.uri,
           type: "POST",
           data: {
-            method: "getAllClientsWithParam",
+            method: "getClientBalances",
             data: JSON.stringify({
-              month: month,
-              year: year,
-              machineType: "All",
-              officeType: office
+              month: parseInt(month, 10),
+              year: parseInt(year, 10)
             })
           },
           dataType: "json",
-          success: function (clients) {
-            if (!clients || clients.length === 0) {
-              sap.ui.core.BusyIndicator.hide();
-              that._setTableData([]);
-              return;
+          success: function (res) {
+            that._odByClient = {};
+            if (res && res.status === "success") {
+              (res.rows || []).forEach(function (r) {
+                that._odByClient[r.client.trim().toLowerCase()] = r.od;
+              });
             }
-            // For each client, get their total
-            var clientNames = clients.map(function (c) { return c.client; });
-            that._fetchClientTotals(clientNames, month, year, office);
           },
           error: function () {
-            sap.ui.core.BusyIndicator.hide();
-            that._setTableData([]);
+            that._odByClient = {};
+          },
+          complete: function () {
+            // Get all clients for this office/month/year
+            $.ajax({
+              url: that.uri,
+              type: "POST",
+              data: {
+                method: "getAllClientsWithParam",
+                data: JSON.stringify({
+                  month: month,
+                  year: year,
+                  machineType: "All",
+                  officeType: office
+                })
+              },
+              dataType: "json",
+              success: function (clients) {
+                if (!clients || clients.length === 0) {
+                  sap.ui.core.BusyIndicator.hide();
+                  that._setTableData([]);
+                  return;
+                }
+                // For each client, get their total
+                var clientNames = clients.map(function (c) { return c.client; });
+                that._fetchClientTotals(clientNames, month, year, office);
+              },
+              error: function () {
+                sap.ui.core.BusyIndicator.hide();
+                that._setTableData([]);
+              }
+            });
           }
         });
+      },
+
+      // Auto-detected dues for a party, still editable in the table afterwards.
+      _lookupOd: function (clientName) {
+        var map = this._odByClient || {};
+        var od = map[String(clientName || "").trim().toLowerCase()];
+        return parseFloat(od) || 0;
       },
 
       _fetchClientTotals: function (clientNames, month, year, office) {
@@ -122,11 +156,12 @@ sap.ui.define(
                   current += parseFloat(t.total) || 0;
                 });
               }
+              var od = that._lookupOd(clientName);
               rows.push({
                 partyName: clientName,
                 current: current,
-                od: 0,
-                total: current
+                od: od,
+                total: current + od
               });
               completed++;
               if (completed === clientNames.length) {
@@ -135,11 +170,12 @@ sap.ui.define(
               }
             },
             error: function () {
+              var odFallback = that._lookupOd(clientName);
               rows.push({
                 partyName: clientName,
                 current: 0,
-                od: 0,
-                total: 0
+                od: odFallback,
+                total: odFallback
               });
               completed++;
               if (completed === clientNames.length) {
@@ -727,9 +763,12 @@ sap.ui.define(
           });
 
           html += '<div class="totals-block">';
-          if (inv.od > 0) {
+          if (inv.od !== 0) {
+            // A negative OD is money already paid, so it prints as an advance
+            // and is shown without its minus sign - the label carries the sign.
+            var bAdvance = inv.od < 0;
             html += '<div class="totals-row"><span class="label">Grand Total:</span><span class="value">' + inv.total + '</span></div>';
-            html += '<div class="totals-row"><span class="label">OD:</span><span class="value">' + inv.od + '</span></div>';
+            html += '<div class="totals-row"><span class="label">' + (bAdvance ? 'Adv:' : 'OD:') + '</span><span class="value">' + (bAdvance ? '- ' + Math.abs(inv.od) : inv.od) + '</span></div>';
             html += '<div class="totals-row final"><span class="label">Total:</span><span class="value">' + inv.finalTotal + '</span></div>';
           } else {
             html += '<div class="totals-row final"><span class="label">Grand Total:</span><span class="value">' + inv.total + '</span></div>';

@@ -78,6 +78,18 @@
 											<ImageContent src="sap-icon://line-chart"/>
 										</TileContent>
 									</GenericTile>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Daily Khata" subheader="Credit &amp; Debit"
+										press="onPressDailyKhata">
+										<TileContent>
+											<ImageContent src="sap-icon://money-bills"/>
+										</TileContent>
+									</GenericTile>
+									<GenericTile class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout" header="Client Ledger" subheader="Balance &amp; payments"
+										press="onPressClientLedger">
+										<TileContent>
+											<ImageContent src="sap-icon://loan"/>
+										</TileContent>
+									</GenericTile>
 								</content>
 							</Panel>
 							<Panel width="auto" class="sapUiResponsiveMargin" accessibleRole="Region">

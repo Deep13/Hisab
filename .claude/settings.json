@@ -90,7 +90,18 @@
       "Bash(awk -F, 'NR>1 && NF>=3 {s+=$3; n++} END {print \"csv rows=\"n, \"csv OD sum=\"s}' \"Factory 03.csv\")",
       "PowerShell(try { [xml]\\(Get-Content -Raw 'webapp\\\\fragments\\\\OldDataResult.fragment.xml'\\) | Out-Null; \"fragment OK\" } catch { \"FAILED: $\\($_.Exception.Message\\)\" })",
       "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SELECT 'notice' t, COUNT\\(*\\) rows_ FROM notice UNION ALL SELECT 'notice_client', COUNT\\(*\\) FROM notice_client UNION ALL SELECT 'notice_setting', COUNT\\(*\\) FROM notice_setting;\")",
-      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SELECT id, notice, active FROM notice; SELECT * FROM notice_setting;\")"
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SELECT id, notice, active FROM notice; SELECT * FROM notice_setting;\")",
+      "PowerShell(foreach \\($n in @\\('Shaving','Buffing','Milling','Softening','Tangan','Thokai'\\)\\) { $f = \"webapp\\\\view\\\\Transaction$n.view.xml\"; try { [xml]\\(Get-Content -Raw $f\\) | Out-Null; \"$n OK\" } catch { \"$n FAILED: $\\($_.Exception.Message\\)\" } })",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SHOW TABLES LIKE '%khata%'; SHOW TABLES LIKE 'client_opening'; DESCRIBE daily_khata;\")",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"DESCRIBE transaction;\")",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"CREATE INDEX \\\\`idx_transaction_client_period\\\\` ON \\\\`transaction\\\\` \\(\\\\`client\\\\`\\(50\\), \\\\`year\\\\`, \\\\`month\\\\`\\);\")",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SHOW INDEX FROM transaction WHERE Key_name='idx_transaction_client_period';\")",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SELECT client, month, year, machineType, total FROM transaction ORDER BY dateTime DESC LIMIT 3;\")",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SELECT cc, machineName, type FROM machine LIMIT 4;\")",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SELECT COUNT\\(*\\) AS txn_rows FROM transaction; SELECT COUNT\\(*\\) AS grouped_rows FROM \\(SELECT client, year, month FROM transaction WHERE machineType <> 'Thokai' AND client IS NOT NULL AND client <> '' GROUP BY client, year, month\\) g;\")",
+      "Bash(node --check webapp/controller/ProfitLoss.controller.js)",
+      "PowerShell(foreach \\($f in @\\('webapp\\\\view\\\\DailyKhata.view.xml','webapp\\\\view\\\\OpeningBalance.view.xml','webapp\\\\view\\\\ClientLedger.view.xml','webapp\\\\view\\\\Main.view.xml','webapp\\\\view\\\\ProfitLoss.view.xml','webapp\\\\fragments\\\\KhataEntry.fragment.xml'\\)\\) { try { [xml]\\(Get-Content -Raw $f\\) | Out-Null; \"OK  $f\" } catch { \"FAIL $f : $\\($_.Exception.Message\\)\" } })",
+      "PowerShell(try { [xml]\\(Get-Content -Raw 'webapp\\\\view\\\\Invoice.view.xml'\\) | Out-Null; \"Invoice.view.xml OK\" } catch { \"FAILED: $\\($_.Exception.Message\\)\" })"
     ]
   }
 }

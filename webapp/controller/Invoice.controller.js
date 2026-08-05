@@ -161,8 +161,47 @@ sap.ui.define(
             
             invoiceData.total = total;
             invoiceData.notices = [];
+            invoiceData.hasOd = false;
+            invoiceData.od = 0;
+            invoiceData.finalTotal = total;
             var oViewModel = new JSONModel(invoiceData);
             that.getView().setModel(oViewModel, "viewModel");
+
+            // Dues carried in from earlier months, from the same source the
+            // Tagada Slip uses. A combined "All" invoice has no single client,
+            // so it carries no OD line.
+            if (oData.Client && oData.Client !== "All") {
+              $.ajax({
+                url: that.uri,
+                type: "POST",
+                data: {
+                  method: "getClientBalances",
+                  data: JSON.stringify({
+                    month: parseInt(oData.month, 10),
+                    year: parseInt(oData.year, 10)
+                  })
+                },
+                dataType: "json",
+                success: function (res) {
+                  if (!res || res.status !== "success") {
+                    return;
+                  }
+                  var name = String(oData.Client).trim().toLowerCase();
+                  var match = (res.rows || []).filter(function (r) {
+                    return r.client.trim().toLowerCase() === name;
+                  })[0];
+                  if (!match || !match.od) {
+                    return;
+                  }
+                  oViewModel.setProperty("/od", match.od);
+                  oViewModel.setProperty("/odLabel", match.od < 0 ? "Adv" : "OD");
+                  oViewModel.setProperty("/odDisplay",
+                    match.od < 0 ? "- " + Math.abs(match.od) : match.od);
+                  oViewModel.setProperty("/hasOd", true);
+                  oViewModel.setProperty("/finalTotal", total + match.od);
+                }
+              });
+            }
 
             // Notices are maintained in the Notice screen and printed above the
             // figures. They arrive separately so the invoice never waits on them.

@@ -175,6 +175,15 @@
 				<ToolbarSpacer/>
 				<Title level="H1" text="Grand Total: {viewModel>/total}"/>
 			</OverflowToolbar>
+			<!-- Dues carried in from earlier months; hidden when there are none -->
+			<OverflowToolbar visible="{viewModel>/hasOd}">
+				<ToolbarSpacer/>
+				<Title level="H1" text="{viewModel>/odLabel}: {viewModel>/odDisplay}"/>
+			</OverflowToolbar>
+			<OverflowToolbar visible="{viewModel>/hasOd}">
+				<ToolbarSpacer/>
+				<Title level="H1" text="Total: {viewModel>/finalTotal}"/>
+			</OverflowToolbar>
 			</VBox>
 		</content>
 	</Page>

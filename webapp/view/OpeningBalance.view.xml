@@ -1,0 +1,76 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+	controllerName="Hisab.Hisab.controller.OpeningBalance"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+	<Page title="Opening Balances" showNavButton="true" navButtonPress="onpressBack"
+		titleAlignment="Center">
+		<content>
+			<MessageStrip
+				text="Set these once, when you start using Daily Khata. Everything dated before the cut-off is treated as already covered by these figures, so nothing gets counted twice."
+				type="Information" showIcon="true" class="sapUiSmallMargin"/>
+
+			<Panel width="auto" class="sapUiSmallMargin" accessibleRole="Region">
+				<headerToolbar>
+					<OverflowToolbar>
+						<Title text="Cash in Hand"/>
+						<ToolbarSpacer/>
+						<Button text="Save Cash Balance" icon="sap-icon://save" type="Emphasized"
+							press="onSaveCashOpening"/>
+					</OverflowToolbar>
+				</headerToolbar>
+				<content>
+					<HBox class="sapUiSmallMargin" alignItems="End" wrapping="Wrap">
+						<VBox class="sapUiMediumMarginEnd">
+							<Label text="Starting from" design="Bold" required="true"/>
+							<DatePicker id="idCashDate" displayFormat="dd-MM-yyyy" valueFormat="yyyy-MM-dd"/>
+						</VBox>
+						<VBox>
+							<Label text="Cash in hand on that day" design="Bold" required="true"/>
+							<Input id="idCashAmount" type="Number" textAlign="End" width="12rem" placeholder="0"/>
+						</VBox>
+					</HBox>
+				</content>
+			</Panel>
+
+			<Panel width="auto" class="sapUiSmallMargin" accessibleRole="Region">
+				<headerToolbar>
+					<OverflowToolbar>
+						<Title text="Client Balances"/>
+						<ToolbarSpacer/>
+						<SearchField id="idClientSearch" width="16rem" placeholder="Find a client"
+							liveChange="onSearchClients" class="sapUiTinyMarginEnd"/>
+						<Button text="Save Client Balances" icon="sap-icon://save" type="Emphasized"
+							press="onSaveClientOpenings"/>
+					</OverflowToolbar>
+				</headerToolbar>
+				<content>
+					<HBox class="sapUiSmallMargin" alignItems="End">
+						<VBox class="sapUiMediumMarginEnd">
+							<Label text="Balances as at" design="Bold" required="true"/>
+							<DatePicker id="idClientAsOf" displayFormat="dd-MM-yyyy" valueFormat="yyyy-MM-dd"/>
+						</VBox>
+						<VBox>
+							<Label text=" "/>
+							<ObjectStatus id="idOpeningTotal" title="Total" text="0"/>
+						</VBox>
+					</HBox>
+					<Table id="idClientTable" class="sapUiSizeCompact" inset="false" fixedLayout="false"
+						growing="true" growingThreshold="50" items="{openingModel>/visible}">
+						<columns>
+							<Column><Label text="Client"/></Column>
+							<Column width="14rem" hAlign="End"><Label text="Opening Balance"/></Column>
+						</columns>
+						<items>
+							<ColumnListItem>
+								<cells>
+									<Text text="{openingModel>client}"/>
+									<Input value="{openingModel>amount}" type="Number" textAlign="End"
+										width="12rem" liveChange="onOpeningAmountChange"/>
+								</cells>
+							</ColumnListItem>
+						</items>
+					</Table>
+				</content>
+			</Panel>
+		</content>
+	</Page>
+</mvc:View>

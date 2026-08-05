@@ -213,8 +213,10 @@ sap.ui.define(
         html += '<h2>' + data.monthLabel + '</h2>';
 
         html += '<div class="calc-box">';
-        html += '<div class="line">Gross Profit: ' + data.grossProfit.toLocaleString("en-IN") + '</div>';
-        html += '<div class="line">&minus; Total Expense: ' + data.totalExpense.toLocaleString("en-IN") + '</div>';
+        html += '<div class="line">Total Income: ' + data.totalIncome.toLocaleString("en-IN") + '</div>';
+        html += '<div class="line">&minus; Total Expense: ' + data.totalExpense.toLocaleString("en-IN")
+          + ' &nbsp;(Expense Outer ' + data.expenseOuter.toLocaleString("en-IN")
+          + ' + Earning Cost ' + data.costOfEarnings.toLocaleString("en-IN") + ')</div>';
         html += '<div class="net">= Net Profit: ' + data.netProfit.toLocaleString("en-IN") + '</div>';
         html += '</div>';
 
@@ -262,7 +264,7 @@ sap.ui.define(
           var amt = parseFloat(data[e.key]) || 0;
           html += '<tr><td>' + e.label + '</td><td class="num">' + amt.toLocaleString("en-IN") + '</td></tr>';
         });
-        html += '<tr class="total"><td>Total</td><td class="num">' + data.totalExpense.toLocaleString("en-IN") + '</td></tr>';
+        html += '<tr class="total"><td>Total</td><td class="num">' + data.expenseOuter.toLocaleString("en-IN") + '</td></tr>';
         html += '</table></body></html>';
 
         var w = window.open('', '_blank');
@@ -279,9 +281,12 @@ sap.ui.define(
         // Calculation summary at top
         vbox.addItem(new Title({ text: "Calculation", level: "H4" }).addStyleClass("sapUiSmallMarginBottom"));
         var calcBoxTop = new VBox().addStyleClass("sapUiSmallMarginBegin");
-        calcBoxTop.addItem(new Text({ text: "Gross Profit: " + data.grossProfit.toLocaleString("en-IN") }));
-        calcBoxTop.addItem(new Text({ text: "− Total Expense: " + data.totalExpense.toLocaleString("en-IN") })
-          .addStyleClass("sapUiTinyMarginTop"));
+        calcBoxTop.addItem(new Text({ text: "Total Income: " + data.totalIncome.toLocaleString("en-IN") }));
+        calcBoxTop.addItem(new Text({
+          text: "− Total Expense: " + data.totalExpense.toLocaleString("en-IN")
+            + "   (" + data.expenseOuter.toLocaleString("en-IN")
+            + " + " + data.costOfEarnings.toLocaleString("en-IN") + ")"
+        }).addStyleClass("sapUiTinyMarginTop"));
         calcBoxTop.addItem(new Title({
           text: "= Net Profit: " + data.netProfit.toLocaleString("en-IN"),
           level: "H3"
@@ -357,7 +362,7 @@ sap.ui.define(
         var expenseTable = this._buildSummaryTable(["Expense", "Amount", "% of Total"]);
         EXPENSES.forEach(function (e) {
           var amt = parseFloat(data[e.key]) || 0;
-          var pct = data.totalExpense > 0 ? ((amt / data.totalExpense) * 100).toFixed(1) + "%" : "0%";
+          var pct = data.expenseOuter > 0 ? ((amt / data.expenseOuter) * 100).toFixed(1) + "%" : "0%";
           expenseTable.addItem(new ColumnListItem({
             cells: [
               new Text({ text: e.label }),
@@ -369,7 +374,7 @@ sap.ui.define(
         expenseTable.addItem(new ColumnListItem({
           cells: [
             new Label({ text: "Total", design: "Bold" }),
-            new Label({ text: data.totalExpense.toLocaleString("en-IN"), design: "Bold" }),
+            new Label({ text: data.expenseOuter.toLocaleString("en-IN"), design: "Bold" }),
             new Label({ text: "100%", design: "Bold" })
           ]
         }));
@@ -428,7 +433,7 @@ sap.ui.define(
           year: bEdit ? oExisting.year.toString() : currYear.toString(),
           shaving: 0, buffing: 0, charbi: 0, milling: 0, tangan: 0,
           shavingProfit: 0, buffingProfit: 0, charbiProfit: 0, millingProfit: 0, tanganProfit: 0,
-          totalEarning: 0, totalExpense: 0, grossProfit: 0, netProfit: 0,
+          totalEarning: 0, totalIncome: 0, expenseOuter: 0, costOfEarnings: 0, totalExpense: 0, grossProfit: 0, netProfit: 0,
           offices: []
         }, initExpenses));
         oFormModel.setSizeLimit(100);
@@ -485,7 +490,7 @@ sap.ui.define(
         xTable.addItem(new ColumnListItem({
           cells: [
             new Label({ text: "Total", design: "Bold" }),
-            new Label({ text: "{form>/totalExpense}", design: "Bold" })
+            new Label({ text: "{form>/expenseOuter}", design: "Bold" })
           ]
         }));
         content.addItem(xTable);
@@ -593,10 +598,60 @@ sap.ui.define(
             offices.forEach(function (_, idx) { that._recalcOffice(oFormModel, idx); });
             that._rebuildEarningsTables(oFormModel);
             that._recalcForm(oFormModel);
+            that._fetchKhataExpenses(oFormModel, month, year);
             sap.ui.core.BusyIndicator.hide();
           },
           error: function () {
             sap.ui.core.BusyIndicator.hide();
+          }
+        });
+      },
+
+      // Pulls the month's debits out of Daily Khata and drops them onto the
+      // matching expense lines. Machine expenses land on Maintenance and
+      // "Others" on Miscellaneous. Electric Bill and Munshi are not Daily Khata
+      // categories, so those stay manual. Anything the day book has no figure
+      // for is left untouched, so a hand-typed value is never wiped.
+      _fetchKhataExpenses: function (oFormModel, month, year) {
+        var that = this;
+        var KHATA_TO_EXPENSE = {
+          churi: "churi",
+          buff_paper: "buffPaper",
+          mobil: "mobil",
+          bhussi: "bhussi",
+          v_belt: "vBelt",
+          machine_expense: "maintenance",
+          other: "miscellaneous"
+        };
+
+        $.ajax({
+          url: this.uri,
+          type: "POST",
+          data: {
+            method: "getKhataMonthlySummary",
+            data: JSON.stringify({ month: parseInt(month, 10), year: parseInt(year, 10) })
+          },
+          dataType: "json",
+          success: function (res) {
+            if (!res || res.status !== "success") {
+              return;
+            }
+            var debits = res.debits || {};
+            var applied = 0;
+            var d = oFormModel.getData();
+            Object.keys(KHATA_TO_EXPENSE).forEach(function (sKhataKey) {
+              var amount = parseFloat(debits[sKhataKey]) || 0;
+              if (amount > 0) {
+                d[KHATA_TO_EXPENSE[sKhataKey]] = amount;
+                applied++;
+              }
+            });
+            if (!applied) {
+              return;
+            }
+            oFormModel.setData(d);
+            that._recalcForm(oFormModel);
+            MessageToast.show(applied + " expense lines filled from Daily Khata");
           }
         });
       },
@@ -636,15 +691,18 @@ sap.ui.define(
           gross += sumProfit;
         });
 
-        // Expenses
-        var totalExp = 0;
+        // Expenses (see ProfitLossCompute for how the two totals differ)
+        var expenseOuter = 0;
         EXPENSES.forEach(function (x) {
-          totalExp += parseFloat(d[x.inputKey]) || 0;
+          expenseOuter += parseFloat(d[x.inputKey]) || 0;
         });
         d.totalEarning = totalEarn;
-        d.totalExpense = totalExp;
+        d.totalIncome = totalEarn;
+        d.expenseOuter = expenseOuter;
+        d.costOfEarnings = totalEarn - gross;
+        d.totalExpense = expenseOuter + d.costOfEarnings;
         d.grossProfit = gross;
-        d.netProfit = gross - totalExp;
+        d.netProfit = totalEarn - d.totalExpense;
         oFormModel.setData(d);
       },
 
@@ -774,8 +832,10 @@ sap.ui.define(
           return parseInt(a.month, 10) - parseInt(b.month, 10);
         });
 
+        // Same three figures as the Calculation box: income, the full expense
+        // (outer sheet + earning cost), and what is left.
         var labels = sorted.map(function (r) { return r.monthLabel; });
-        var earnings = sorted.map(function (r) { return r.totalEarning; });
+        var earnings = sorted.map(function (r) { return r.totalIncome; });
         var expenses = sorted.map(function (r) { return r.totalExpense; });
         var net = sorted.map(function (r) { return r.netProfit; });
 
@@ -790,7 +850,7 @@ sap.ui.define(
             labels: labels,
             datasets: [
               {
-                label: "Total Earning",
+                label: "Total Income",
                 backgroundColor: "rgba(66,165,245,0.7)",
                 data: earnings
               },
@@ -826,6 +886,10 @@ sap.ui.define(
       }
     });
 
+    // Total Income is everything earned. Total Expense is the outer expense
+    // sheet PLUS the part of the earnings that never became profit (the
+    // labour/running cost baked into the Shaving and Buffing multipliers), so
+    // both sides of the calculation are stated in full amounts.
     function ProfitLossCompute(r) {
       var totalEarn = 0, gross = 0;
       EARNINGS.forEach(function (e) {
@@ -833,16 +897,21 @@ sap.ui.define(
         totalEarn += amt;
         gross += Math.floor(amt * e.profitMultiplier);
       });
-      var totalExp = 0;
+      var expenseOuter = 0;
       EXPENSES.forEach(function (x) {
-        totalExp += parseFloat(r[x.key]) || 0;
+        expenseOuter += parseFloat(r[x.key]) || 0;
       });
-      var net = gross - totalExp;
+      var costOfEarnings = totalEarn - gross;
+      var totalExpense = expenseOuter + costOfEarnings;
+      var net = totalEarn - totalExpense;
       var monthName = MONTH_NAMES[parseInt(r.month, 10) - 1] || r.month;
       return {
         monthLabel: monthName + " " + r.year,
         totalEarning: totalEarn,
-        totalExpense: totalExp,
+        totalIncome: totalEarn,
+        expenseOuter: expenseOuter,
+        costOfEarnings: costOfEarnings,
+        totalExpense: totalExpense,
         grossProfit: gross,
         netProfit: net,
         netProfitState: net >= 0 ? "Success" : "Error"

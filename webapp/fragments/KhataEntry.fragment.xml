@@ -1,0 +1,52 @@
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:l="sap.ui.layout.form">
+	<Dialog id="idKhataEntryDialog" title="{entryModel>/title}" class="sapUiSizeCompact"
+		contentWidth="30rem">
+		<content>
+			<l:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanS="12"
+				labelSpanM="4" columnsM="1" class="sapUiNoContentPadding">
+				<l:content>
+					<Label text="Against" required="true"/>
+					<Select id="idEntryCategory" width="100%" selectedKey="{entryModel>/category}"
+						items="{entryModel>/categories}" change="onEntryCategoryChange">
+						<core:Item key="{entryModel>key}" text="{entryModel>label}"/>
+					</Select>
+
+					<Label text="Client" required="true" visible="{entryModel>/showClient}"/>
+					<ComboBox id="idEntryClient" width="100%" visible="{entryModel>/showClient}"
+						selectedKey="{entryModel>/client}" placeholder="Select the client who paid"
+						items="{ClientModel>/Clients_results}">
+						<core:Item key="{ClientModel>client}" text="{ClientModel>client}"/>
+					</ComboBox>
+
+					<Label text="Office" required="true" visible="{entryModel>/showMachine}"/>
+					<ComboBox id="idEntryOffice" width="100%" visible="{entryModel>/showMachine}"
+						selectedKey="{entryModel>/cc}" placeholder="Select office"
+						change="onEntryOfficeChange" items="{MachineModel>/offices}">
+						<core:Item key="{MachineModel>cc}" text="{MachineModel>cc}"/>
+					</ComboBox>
+
+					<Label text="Machine" required="true" visible="{entryModel>/showMachine}"/>
+					<ComboBox id="idEntryMachine" width="100%" visible="{entryModel>/showMachine}"
+						selectedKey="{entryModel>/machineName}" placeholder="Select machine"
+						items="{MachineModel>/filtered}">
+						<core:Item key="{MachineModel>machineName}" text="{MachineModel>machineName}"/>
+					</ComboBox>
+
+					<Label text="{entryModel>/noteLabel}"/>
+					<Input id="idEntryNote" width="100%" value="{entryModel>/note}" maxLength="255"
+						placeholder="{entryModel>/notePlaceholder}"/>
+
+					<Label text="Amount" required="true"/>
+					<Input id="idEntryAmount" width="100%" value="{entryModel>/amount}" type="Number"
+						textAlign="End" placeholder="0"/>
+				</l:content>
+			</l:SimpleForm>
+		</content>
+		<beginButton>
+			<Button text="Save" type="Emphasized" press="onSaveEntry"/>
+		</beginButton>
+		<endButton>
+			<Button text="Cancel" press="onCancelEntry"/>
+		</endButton>
+	</Dialog>
+</core:FragmentDefinition>

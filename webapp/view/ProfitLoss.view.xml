@@ -23,7 +23,7 @@
                             items="{plModel>/rows}" mode="None" itemPress="onRowPress">
                             <columns>
                                 <Column><Label text="Month"/></Column>
-                                <Column hAlign="Right"><Label text="Total Earning"/></Column>
+                                <Column hAlign="Right"><Label text="Total Income"/></Column>
                                 <Column hAlign="Right"><Label text="Total Expenses"/></Column>
                                 <Column hAlign="Right"><Label text="Gross Profit"/></Column>
                                 <Column hAlign="Right"><Label text="Net Profit"/></Column>
@@ -32,7 +32,7 @@
                                 <ColumnListItem type="Active">
                                     <cells>
                                         <Text text="{plModel>monthLabel}"/>
-                                        <Text text="{plModel>totalEarning}"/>
+                                        <Text text="{plModel>totalIncome}"/>
                                         <Text text="{plModel>totalExpense}"/>
                                         <Text text="{plModel>grossProfit}"/>
                                         <ObjectStatus text="{plModel>netProfit}" state="{plModel>netProfitState}"/>

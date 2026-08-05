@@ -1,0 +1,158 @@
+<mvc:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+	controllerName="Hisab.Hisab.controller.ClientLedger"
+	xmlns:html="http://www.w3.org/1999/xhtml">
+	<Page showNavButton="true" navButtonPress="onpressBack">
+		<customHeader>
+			<Bar>
+				<contentLeft>
+					<Button icon="sap-icon://nav-back" press="onpressBack"/>
+				</contentLeft>
+				<contentMiddle>
+					<Title text="Client Ledger"/>
+				</contentMiddle>
+				<contentRight>
+					<Button text="Print" icon="sap-icon://print" type="Accept" press="onPrintLedger"/>
+				</contentRight>
+			</Bar>
+		</customHeader>
+		<content>
+			<IconTabBar id="idLedgerTabs" selectedKey="one" select="onTabSelect" expandable="false">
+				<items>
+					<IconTabFilter text="One Client" key="one" icon="sap-icon://customer">
+						<HBox class="sapUiSmallMargin" alignItems="End" wrapping="Wrap">
+							<VBox class="sapUiSmallMarginEnd">
+								<Label text="Client" design="Bold"/>
+								<ComboBox id="idLedgerClient" width="18rem" placeholder="Select a client"
+									change="onClientChange" items="{ClientModel>/Clients_results}">
+									<core:Item key="{ClientModel>client}" text="{ClientModel>client}"/>
+								</ComboBox>
+							</VBox>
+						</HBox>
+
+						<HBox class="sapUiSmallMarginBegin sapUiSmallMarginEnd" wrapping="Wrap">
+							<ObjectStatus title="Opening" text="{ledgerModel>/openingText}"
+								class="sapUiMediumMarginEnd"/>
+							<ObjectStatus title="Total Billed" text="{ledgerModel>/billedText}"
+								class="sapUiMediumMarginEnd"/>
+							<ObjectStatus title="Total Paid" text="{ledgerModel>/paidText}" state="Success"
+								class="sapUiMediumMarginEnd"/>
+							<ObjectStatus title="Balance Due" text="{ledgerModel>/balanceText}"
+								state="{ledgerModel>/balanceState}"/>
+						</HBox>
+
+						<Table id="idLedgerTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false"
+							fixedLayout="false" items="{ledgerModel>/rows}">
+							<headerToolbar>
+								<OverflowToolbar>
+									<Title text="Month by Month"/>
+								</OverflowToolbar>
+							</headerToolbar>
+							<columns>
+								<Column><Label text="Month"/></Column>
+								<Column width="10rem" hAlign="End"><Label text="Billed"/></Column>
+								<Column width="10rem" hAlign="End"><Label text="Paid"/></Column>
+								<Column width="12rem" hAlign="End"><Label text="Balance"/></Column>
+							</columns>
+							<items>
+								<ColumnListItem>
+									<cells>
+										<Text text="{ledgerModel>monthLabel}"/>
+										<Text text="{ledgerModel>billedText}"/>
+										<Text text="{ledgerModel>paidText}"/>
+										<ObjectStatus text="{ledgerModel>balanceText}" state="{ledgerModel>balanceState}"/>
+									</cells>
+								</ColumnListItem>
+							</items>
+						</Table>
+
+						<Table id="idPaymentTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false"
+							fixedLayout="false" items="{ledgerModel>/payments}">
+							<headerToolbar>
+								<OverflowToolbar>
+									<Title text="Payments Received"/>
+								</OverflowToolbar>
+							</headerToolbar>
+							<columns>
+								<Column width="12rem"><Label text="Date"/></Column>
+								<Column><Label text="Remark"/></Column>
+								<Column width="10rem" hAlign="End"><Label text="Amount"/></Column>
+							</columns>
+							<items>
+								<ColumnListItem>
+									<cells>
+										<Text text="{ledgerModel>date}"/>
+										<Text text="{ledgerModel>note}"/>
+										<Text text="{ledgerModel>amountText}"/>
+									</cells>
+								</ColumnListItem>
+							</items>
+						</Table>
+					</IconTabFilter>
+
+					<IconTabFilter text="All Clients" key="all" icon="sap-icon://group">
+						<HBox class="sapUiSmallMargin" alignItems="End" wrapping="Wrap">
+							<VBox class="sapUiSmallMarginEnd">
+								<Label text="Month" design="Bold"/>
+								<Select id="idBalMonth" change="onBalancePeriodChange">
+									<core:Item key="01" text="January"/>
+									<core:Item key="02" text="February"/>
+									<core:Item key="03" text="March"/>
+									<core:Item key="04" text="April"/>
+									<core:Item key="05" text="May"/>
+									<core:Item key="06" text="June"/>
+									<core:Item key="07" text="July"/>
+									<core:Item key="08" text="August"/>
+									<core:Item key="09" text="September"/>
+									<core:Item key="10" text="October"/>
+									<core:Item key="11" text="November"/>
+									<core:Item key="12" text="December"/>
+								</Select>
+							</VBox>
+							<VBox class="sapUiSmallMarginEnd">
+								<Label text="Year" design="Bold"/>
+								<Select id="idBalYear" change="onBalancePeriodChange">
+									<core:Item key="2024" text="2024"/>
+									<core:Item key="2025" text="2025"/>
+									<core:Item key="2026" text="2026"/>
+									<core:Item key="2027" text="2027"/>
+								</Select>
+							</VBox>
+							<VBox>
+								<Label text=" "/>
+								<CheckBox id="idOnlyDues" text="Only clients with a balance" selected="true"
+									select="onBalancePeriodChange"/>
+							</VBox>
+						</HBox>
+						<Table id="idBalanceTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false"
+							fixedLayout="false" growing="true" growingThreshold="50"
+							items="{balanceModel>/visible}">
+							<headerToolbar>
+								<OverflowToolbar>
+									<Title id="idBalanceTitle" text="Client Balances"/>
+								</OverflowToolbar>
+							</headerToolbar>
+							<columns>
+								<Column><Label text="Client"/></Column>
+								<Column width="10rem" hAlign="End"><Label text="OD"/></Column>
+								<Column width="10rem" hAlign="End"><Label text="Billed"/></Column>
+								<Column width="10rem" hAlign="End"><Label text="Paid"/></Column>
+								<Column width="12rem" hAlign="End"><Label text="Balance"/></Column>
+							</columns>
+							<items>
+								<ColumnListItem>
+									<cells>
+										<Text text="{balanceModel>client}"/>
+										<Text text="{balanceModel>odText}"/>
+										<Text text="{balanceModel>billedText}"/>
+										<Text text="{balanceModel>paidText}"/>
+										<ObjectStatus text="{balanceModel>balanceText}" state="{balanceModel>balanceState}"/>
+									</cells>
+								</ColumnListItem>
+							</items>
+						</Table>
+					</IconTabFilter>
+				</items>
+			</IconTabBar>
+		</content>
+	</Page>
+</mvc:View>

@@ -58,13 +58,13 @@ sap.ui.define(["sap/ui/core/mvc/Controller", "sap/ui/model/json/JSONModel"], fun
       });
     },
 
-    // ---- Recent client tokens (shared by all transaction screens) ----
+    // ---- Recent clients (shared by all transaction screens) ----
     // Each screen keeps its own recent-client list, held only in memory. It
     // accumulates as you enter transactions and is preserved while navigating
     // between screens, but a browser page refresh recreates the view and
-    // starts the list empty again. The list is exposed as a "recentModel"
-    // JSON model (/clients array) which the view renders as clickable tokens
-    // below the entry table.
+    // starts the list empty again. The list is not shown anywhere: it only
+    // decides the order of the client suggestion list, so the parties you are
+    // working with right now sit at the top of the dropdown.
 
     initRecentClients: function (sMachineType) {
       // Only seed an empty list the first time this screen is shown in the
@@ -93,26 +93,49 @@ sap.ui.define(["sap/ui/core/mvc/Controller", "sap/ui/model/json/JSONModel"], fun
         aClients = aClients.slice(0, 12);
       }
       oModel.setProperty("/clients", aClients);
+      this.sortClientsByRecent();
     },
 
-    // Token pressed: drop the client name into the entry table's Client
-    // field. Handles both the single-row model (/Client) and Thokai's
-    // multi-row model (/results/0/Client).
-    onSelectRecentClient: function (oEvent) {
-      var sClient = oEvent.getSource().getText();
-      var oTableModel = this.byId("idTable").getModel();
-      if (!oTableModel) {
+    // Reorders the client suggestion list so recently used clients come first,
+    // most recent at the top. Everything else keeps the order the server sent
+    // (alphabetical). Call this whenever ComboModel is (re)loaded, since a
+    // fresh fetch arrives in plain alphabetical order.
+    sortClientsByRecent: function () {
+      var oComboModel = this.getView().getModel("ComboModel");
+      var oRecentModel = this.getView().getModel("recentModel");
+      if (!oComboModel || !oRecentModel) {
         return;
       }
-      var oData = oTableModel.getData();
-      if (oData && Array.isArray(oData.results)) {
-        if (!oData.results.length) {
-          oData.results.push({ Date: "", Client: "", Quantity: "", Rate: "" });
-        }
-        oTableModel.setProperty("/results/0/Client", sClient);
-      } else {
-        oTableModel.setProperty("/Client", sClient);
+
+      var aClients = oComboModel.getProperty("/Clients_results") || [];
+      var aRecent = oRecentModel.getProperty("/clients") || [];
+      if (!aClients.length || !aRecent.length) {
+        return;
       }
+
+      var mRank = {};
+      aRecent.forEach(function (sClient, iIndex) {
+        mRank[String(sClient).trim().toLowerCase()] = iIndex;
+      });
+
+      // Array.sort is stable, so returning 0 keeps the server's ordering for
+      // the clients that have not been used yet.
+      var aSorted = aClients.slice().sort(function (a, b) {
+        var iA = mRank[String(a.client).trim().toLowerCase()];
+        var iB = mRank[String(b.client).trim().toLowerCase()];
+        if (iA === undefined && iB === undefined) {
+          return 0;
+        }
+        if (iA === undefined) {
+          return 1;
+        }
+        if (iB === undefined) {
+          return -1;
+        }
+        return iA - iB;
+      });
+
+      oComboModel.setProperty("/Clients_results", aSorted);
     },
   });
 });

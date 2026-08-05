@@ -65,6 +65,14 @@ sap.ui.define(
         this.oRouter.navTo("Notice");
       },
 
+      onPressDailyKhata: function () {
+        this.oRouter.navTo("DailyKhata");
+      },
+
+      onPressClientLedger: function () {
+        this.oRouter.navTo("ClientLedger");
+      },
+
       onPressTanganTransaction: function (oEvent) {
         this.oRouter.navTo("TransactionTangan");
       },

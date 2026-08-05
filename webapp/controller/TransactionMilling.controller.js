@@ -62,6 +62,8 @@ sap.ui.define(
                 });
                 var jModel = new JSONModel(ComboObj);
                 that.getView().setModel(jModel, "ComboModel");
+                // A fresh fetch is alphabetical; restore the recently-used order.
+                that.sortClientsByRecent();
               },
               error: function (request, error) {},
             });
