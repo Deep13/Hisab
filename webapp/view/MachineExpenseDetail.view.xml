@@ -8,7 +8,7 @@
 					<Button icon="sap-icon://nav-back" press="onpressBack" />
 				</contentLeft>
 				<contentMiddle>
-					<Title text="Machine Expenses" />
+					<Title text="Expenses" />
 				</contentMiddle>
 			</Bar>
 		</customHeader>

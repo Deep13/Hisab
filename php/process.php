@@ -55,7 +55,13 @@ $allowedMethods = [
     'saveClientOpenings',
     'getClientBalances',
     'getClientLedger',
-    'getKhataMonthlySummary'
+    'getKhataMonthlySummary',
+    'getElectricityMeters',
+    'saveElectricityMeter',
+    'deleteElectricityMeter',
+    'getElectricityBills',
+    'saveElectricityBill',
+    'deleteElectricityBill'
 ];
 
 $method = isset($_POST["method"]) ? $_POST["method"] : '';
@@ -1654,6 +1660,19 @@ function getKhataMonthlySummary() {
     $row = $stmt->get_result()->fetch_assoc();
     $debits["machine_expense"] = (float)$row["total"];
 
+    // Every electricity bill raised for the month, across all meters.
+    $debits["electricity"] = 0.0;
+    $stmt = @$conn->prepare(
+        "SELECT COALESCE(SUM(amount), 0) AS total FROM electricity_bill
+         WHERE year = ? AND month = ?"
+    );
+    if ($stmt) {
+        $stmt->bind_param("ii", $year, $month);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $debits["electricity"] = (float)$row["total"];
+    }
+
     return json_encode([
         "status" => "success",
         "month" => $month,
@@ -1661,6 +1680,214 @@ function getKhataMonthlySummary() {
         "debits" => $debits,
         "credits" => $credits,
     ]);
+}
+
+// --- Electricity (a sub-module of Expenses) ---
+
+// A meter sits at one of two places; anything else is rejected.
+function electricityLocations() {
+    return ["Factory", "Chowbaga"];
+}
+
+/** Every meter, with how many bills it has and what has been billed so far. */
+function getElectricityMeters() {
+    $conn = getDbConnection();
+    $result = @$conn->query(
+        "SELECT m.id, m.customer_id, m.meter_number, m.consumer_name, m.nickname, m.cc, m.active,
+                COUNT(b.id) AS billCount,
+                COALESCE(SUM(b.amount), 0) AS totalAmount
+         FROM `electricity_meter` m
+         LEFT JOIN `electricity_bill` b ON b.meter_id = m.id
+         GROUP BY m.id, m.customer_id, m.meter_number, m.consumer_name, m.nickname, m.cc, m.active
+         ORDER BY m.nickname ASC, m.consumer_name ASC"
+    );
+    if (!$result) {
+        return json_encode([]);
+    }
+    return json_encode(fetchAll($result));
+}
+
+function saveElectricityMeter() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $id = (int)($obj->id ?? 0);
+    $customerId = trim($obj->customer_id ?? '');
+    $meterNumber = trim($obj->meter_number ?? '');
+    $consumerName = trim($obj->consumer_name ?? '');
+    $nickname = trim($obj->nickname ?? '');
+    $cc = trim($obj->cc ?? '');
+    $active = isset($obj->active) ? (!empty($obj->active) ? 1 : 0) : 1;
+
+    if ($customerId === '' || $meterNumber === '' || $consumerName === '') {
+        return json_encode(["status" => "failed", "error" => "Customer ID, meter number and consumer name are required"]);
+    }
+    if (!in_array($cc, electricityLocations(), true)) {
+        return json_encode(["status" => "failed", "error" => "Select a location: " . implode(" or ", electricityLocations())]);
+    }
+
+    // Customer ID identifies the connection, so it must stay unique.
+    $stmt = @$conn->prepare("SELECT `id` FROM `electricity_meter` WHERE `customer_id` = ? AND `id` <> ?");
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'electricity_meter' does not exist. Please run sql/electricity.sql."]);
+    }
+    $stmt->bind_param("si", $customerId, $id);
+    $stmt->execute();
+    if ($stmt->get_result()->num_rows > 0) {
+        return json_encode(["status" => "failed", "error" => "Customer ID '" . $customerId . "' already exists"]);
+    }
+
+    if ($id > 0) {
+        $stmt = $conn->prepare(
+            "UPDATE `electricity_meter` SET `customer_id` = ?, `meter_number` = ?,
+             `consumer_name` = ?, `nickname` = ?, `cc` = ?, `active` = ? WHERE `id` = ?"
+        );
+        $stmt->bind_param("sssssii", $customerId, $meterNumber, $consumerName, $nickname, $cc, $active, $id);
+    } else {
+        $stmt = $conn->prepare(
+            "INSERT INTO `electricity_meter` (`customer_id`, `meter_number`, `consumer_name`, `nickname`, `cc`, `active`, `created_on`)
+             VALUES (?, ?, ?, ?, ?, ?, CURDATE())"
+        );
+        $stmt->bind_param("sssssi", $customerId, $meterNumber, $consumerName, $nickname, $cc, $active);
+    }
+
+    if ($stmt->execute()) {
+        return json_encode(["status" => "success", "id" => $id > 0 ? $id : $conn->insert_id]);
+    }
+    return json_encode(["status" => "failed", "error" => "Could not save the meter"]);
+}
+
+function deleteElectricityMeter() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $id = (int)($obj->id ?? 0);
+
+    if ($id <= 0) {
+        return json_encode(["status" => "failed", "error" => "Meter id is required"]);
+    }
+    // Its bills go with it via ON DELETE CASCADE.
+    $stmt = @$conn->prepare("DELETE FROM `electricity_meter` WHERE `id` = ?");
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'electricity_meter' does not exist. Please run sql/electricity.sql."]);
+    }
+    $stmt->bind_param("i", $id);
+    if ($stmt->execute()) {
+        return json_encode(["status" => "success"]);
+    }
+    return json_encode(["status" => "failed", "error" => "Could not delete the meter"]);
+}
+
+/**
+ * Bills, optionally narrowed to one meter and/or one month. With no filter it
+ * returns everything, newest period first.
+ */
+function getElectricityBills() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $meterId = (int)($obj->meter_id ?? 0);
+    $month = (int)($obj->month ?? 0);
+    $year = (int)($obj->year ?? 0);
+
+    $sql = "SELECT b.id, b.meter_id, b.month, b.year, b.amount,
+                   m.customer_id, m.meter_number, m.consumer_name, m.nickname, m.cc
+            FROM `electricity_bill` b
+            JOIN `electricity_meter` m ON m.id = b.meter_id";
+    $conditions = [];
+    $types = "";
+    $params = [];
+
+    if ($meterId > 0) {
+        $conditions[] = "b.meter_id = ?";
+        $types .= "i";
+        $params[] = $meterId;
+    }
+    if ($month >= 1 && $month <= 12) {
+        $conditions[] = "b.month = ?";
+        $types .= "i";
+        $params[] = $month;
+    }
+    if ($year > 2000) {
+        $conditions[] = "b.year = ?";
+        $types .= "i";
+        $params[] = $year;
+    }
+    if ($conditions) {
+        $sql .= " WHERE " . implode(" AND ", $conditions);
+    }
+    $sql .= " ORDER BY b.year DESC, b.month DESC, m.nickname ASC, m.consumer_name ASC";
+
+    $stmt = @$conn->prepare($sql);
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'electricity_bill' does not exist. Please run sql/electricity.sql.", "rows" => [], "total" => 0]);
+    }
+    if ($params) {
+        $stmt->bind_param($types, ...$params);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $rows = [];
+    $total = 0.0;
+    while ($row = $result->fetch_assoc()) {
+        $row["amount"] = (float)$row["amount"];
+        $total += $row["amount"];
+        $rows[] = $row;
+    }
+
+    return json_encode(["status" => "success", "rows" => $rows, "total" => $total]);
+}
+
+function saveElectricityBill() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $meterId = (int)($obj->meter_id ?? 0);
+    $month = (int)($obj->month ?? 0);
+    $year = (int)($obj->year ?? 0);
+    $amount = (float)($obj->amount ?? 0);
+
+    if ($meterId <= 0) {
+        return json_encode(["status" => "failed", "error" => "Select a meter"]);
+    }
+    if ($month < 1 || $month > 12 || $year < 2000) {
+        return json_encode(["status" => "failed", "error" => "Valid month and year are required"]);
+    }
+    if ($amount < 0) {
+        return json_encode(["status" => "failed", "error" => "Bill amount cannot be negative"]);
+    }
+
+    // One bill per meter per month: saving the same period again replaces it.
+    $stmt = @$conn->prepare(
+        "INSERT INTO `electricity_bill` (`meter_id`, `month`, `year`, `amount`)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE `amount` = VALUES(`amount`)"
+    );
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'electricity_bill' does not exist. Please run sql/electricity.sql."]);
+    }
+    $stmt->bind_param("iiid", $meterId, $month, $year, $amount);
+
+    if ($stmt->execute()) {
+        return json_encode(["status" => "success"]);
+    }
+    return json_encode(["status" => "failed", "error" => "Could not save the bill"]);
+}
+
+function deleteElectricityBill() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $id = (int)($obj->id ?? 0);
+
+    if ($id <= 0) {
+        return json_encode(["status" => "failed", "error" => "Bill id is required"]);
+    }
+    $stmt = @$conn->prepare("DELETE FROM `electricity_bill` WHERE `id` = ?");
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'electricity_bill' does not exist. Please run sql/electricity.sql."]);
+    }
+    $stmt->bind_param("i", $id);
+    if ($stmt->execute()) {
+        return json_encode(["status" => "success"]);
+    }
+    return json_encode(["status" => "failed", "error" => "Could not delete the bill"]);
 }
 
 // --- Old dues carried in from a hand-maintained CSV ---

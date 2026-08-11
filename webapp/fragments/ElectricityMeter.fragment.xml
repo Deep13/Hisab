@@ -1,0 +1,39 @@
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:l="sap.ui.layout.form">
+	<Dialog id="idMeterDialog" title="{meterModel>/title}" class="sapUiSizeCompact"
+		contentWidth="28rem">
+		<content>
+			<l:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanS="12"
+				labelSpanM="5" columnsM="1" class="sapUiNoContentPadding">
+				<l:content>
+					<Label text="Customer ID" required="true" />
+					<Input width="100%" value="{meterModel>/customer_id}" maxLength="40"
+						placeholder="As printed on the bill" />
+
+					<Label text="Meter Number" required="true" />
+					<Input width="100%" value="{meterModel>/meter_number}" maxLength="40"
+						placeholder="Meter serial number" />
+
+					<Label text="Consumer Name" required="true" />
+					<Input width="100%" value="{meterModel>/consumer_name}" maxLength="100"
+						placeholder="Name on the connection" />
+
+					<Label text="Nickname" />
+					<Input width="100%" value="{meterModel>/nickname}" maxLength="60"
+						placeholder="Short name you call it by" />
+
+					<Label text="Location" required="true" />
+					<RadioButtonGroup columns="2" selectedIndex="{meterModel>/ccIndex}">
+						<RadioButton text="Factory" />
+						<RadioButton text="Chowbaga" />
+					</RadioButtonGroup>
+				</l:content>
+			</l:SimpleForm>
+		</content>
+		<beginButton>
+			<Button text="Save" type="Emphasized" press="onSaveMeter" />
+		</beginButton>
+		<endButton>
+			<Button text="Cancel" press="onCancelMeter" />
+		</endButton>
+	</Dialog>
+</core:FragmentDefinition>

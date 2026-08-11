@@ -1,0 +1,53 @@
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:l="sap.ui.layout.form">
+	<Dialog id="idBillDialog" title="{billModel>/title}" class="sapUiSizeCompact"
+		contentWidth="28rem">
+		<content>
+			<l:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanS="12"
+				labelSpanM="5" columnsM="1" class="sapUiNoContentPadding">
+				<l:content>
+					<Label text="Meter" required="true" />
+					<ComboBox width="100%" selectedKey="{billModel>/meter_id}" placeholder="Select connection"
+						items="{elecModel>/meters}">
+						<core:Item key="{elecModel>id}"
+							text="{elecModel>nickname} - {elecModel>consumer_name} ({elecModel>customer_id})" />
+					</ComboBox>
+
+					<Label text="Month" required="true" />
+					<Select width="100%" selectedKey="{billModel>/month}">
+						<core:Item key="1" text="January" />
+						<core:Item key="2" text="February" />
+						<core:Item key="3" text="March" />
+						<core:Item key="4" text="April" />
+						<core:Item key="5" text="May" />
+						<core:Item key="6" text="June" />
+						<core:Item key="7" text="July" />
+						<core:Item key="8" text="August" />
+						<core:Item key="9" text="September" />
+						<core:Item key="10" text="October" />
+						<core:Item key="11" text="November" />
+						<core:Item key="12" text="December" />
+					</Select>
+
+					<Label text="Year" required="true" />
+					<Select width="100%" selectedKey="{billModel>/year}">
+						<core:Item key="2024" text="2024" />
+						<core:Item key="2025" text="2025" />
+						<core:Item key="2026" text="2026" />
+						<core:Item key="2027" text="2027" />
+						<core:Item key="2028" text="2028" />
+					</Select>
+
+					<Label text="Bill Amount" required="true" />
+					<Input width="100%" value="{billModel>/amount}" type="Number" textAlign="End"
+						placeholder="0" />
+				</l:content>
+			</l:SimpleForm>
+		</content>
+		<beginButton>
+			<Button text="Save" type="Emphasized" press="onSaveBill" />
+		</beginButton>
+		<endButton>
+			<Button text="Cancel" press="onCancelBill" />
+		</endButton>
+	</Dialog>
+</core:FragmentDefinition>

@@ -607,11 +607,12 @@ sap.ui.define(
         });
       },
 
-      // Pulls the month's debits out of Daily Khata and drops them onto the
-      // matching expense lines. Machine expenses land on Maintenance and
-      // "Others" on Miscellaneous. Electric Bill and Munshi are not Daily Khata
-      // categories, so those stay manual. Anything the day book has no figure
-      // for is left untouched, so a hand-typed value is never wiped.
+      // Pulls the month's recorded spend onto the matching expense lines:
+      // Daily Khata debits, machine expenses (Maintenance) and the electricity
+      // bills raised under Expenses (Electric Bill). "Others" lands on
+      // Miscellaneous. Munshi has no recorded source, so it stays manual, and
+      // any line with no figure for the month is left untouched so a
+      // hand-typed value is never wiped.
       _fetchKhataExpenses: function (oFormModel, month, year) {
         var that = this;
         var KHATA_TO_EXPENSE = {
@@ -621,6 +622,7 @@ sap.ui.define(
           bhussi: "bhussi",
           v_belt: "vBelt",
           machine_expense: "maintenance",
+          electricity: "electricBill",
           other: "miscellaneous"
         };
 

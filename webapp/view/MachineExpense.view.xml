@@ -8,7 +8,7 @@
 					<Button icon="sap-icon://nav-back" press="onpressBack" />
 				</contentLeft>
 				<contentMiddle>
-					<Title text="Machine Expenses" />
+					<Title text="Expenses" />
 				</contentMiddle>
 				<contentRight>
 					<Button icon="sap-icon://add" type="Emphasized" text="Add Machine"
@@ -218,6 +218,126 @@
 											<ObjectNumber
 												number="{ path: 'report>totalAmount', formatter: '.formatter.amount' }"
 												unit="INR" />
+										</cells>
+									</ColumnListItem>
+								</items>
+							</Table>
+						</VBox>
+					</IconTabFilter>
+
+					<IconTabFilter text="Electricity" key="electricity" icon="sap-icon://energy-saving-lightbulb">
+						<VBox class="sapUiSmallMarginTop">
+							<Table id="idMeterTable" inset="false" fixedLayout="false"
+								items="{elecModel>/meters}"
+								noDataText="No meters yet. Use 'Add Meter' to record a connection.">
+								<headerToolbar>
+									<OverflowToolbar>
+										<Title text="Meters" />
+										<ToolbarSpacer />
+										<Button text="Add Meter" icon="sap-icon://add" type="Transparent"
+											press="onAddMeter" />
+									</OverflowToolbar>
+								</headerToolbar>
+								<columns>
+									<Column width="12rem"><Label text="Nickname" /></Column>
+									<Column><Label text="Consumer Name" /></Column>
+									<Column width="10rem"><Label text="Customer ID" /></Column>
+									<Column width="10rem"><Label text="Meter Number" /></Column>
+									<Column width="9rem"><Label text="Location" /></Column>
+									<Column width="7rem" hAlign="End"><Label text="Bills" /></Column>
+									<Column width="10rem" hAlign="End"><Label text="Billed Total" /></Column>
+									<Column width="7rem" hAlign="Center"><Label text="" /></Column>
+								</columns>
+								<items>
+									<ColumnListItem>
+										<cells>
+											<Text text="{elecModel>nickname}" />
+											<Text text="{elecModel>consumer_name}" />
+											<Text text="{elecModel>customer_id}" />
+											<Text text="{elecModel>meter_number}" />
+											<Text text="{elecModel>cc}" />
+											<Text text="{elecModel>billCount}" />
+											<Text text="{elecModel>totalAmount}" />
+											<HBox justifyContent="Center">
+												<Button icon="sap-icon://edit" type="Transparent" tooltip="Edit meter"
+													press="onEditMeter" />
+												<Button icon="sap-icon://delete" type="Transparent" tooltip="Delete meter"
+													press="onDeleteMeter" />
+											</HBox>
+										</cells>
+									</ColumnListItem>
+								</items>
+							</Table>
+
+							<HBox wrap="Wrap" alignItems="End" class="sapUiSmallMarginTop sapUiSmallMarginBottom">
+								<VBox class="sapUiSmallMarginEnd">
+									<Label text="Month" design="Bold" />
+									<Select id="idBillMonth" change="onBillFilterChange">
+										<core:Item key="1" text="January" />
+										<core:Item key="2" text="February" />
+										<core:Item key="3" text="March" />
+										<core:Item key="4" text="April" />
+										<core:Item key="5" text="May" />
+										<core:Item key="6" text="June" />
+										<core:Item key="7" text="July" />
+										<core:Item key="8" text="August" />
+										<core:Item key="9" text="September" />
+										<core:Item key="10" text="October" />
+										<core:Item key="11" text="November" />
+										<core:Item key="12" text="December" />
+									</Select>
+								</VBox>
+								<VBox class="sapUiSmallMarginEnd">
+									<Label text="Year" design="Bold" />
+									<Select id="idBillYear" change="onBillFilterChange">
+										<core:Item key="2024" text="2024" />
+										<core:Item key="2025" text="2025" />
+										<core:Item key="2026" text="2026" />
+										<core:Item key="2027" text="2027" />
+										<core:Item key="2028" text="2028" />
+									</Select>
+								</VBox>
+								<VBox>
+									<Label text=" " />
+									<ObjectStatus title="Month Total" text="{elecModel>/billTotalText}" state="Information" />
+								</VBox>
+							</HBox>
+
+							<Table id="idBillTable" inset="false" fixedLayout="false"
+								items="{ path: 'elecModel>/bills', sorter: { path: 'cc', group: true } }"
+								noDataText="No electricity bills recorded for this month.">
+								<headerToolbar>
+									<OverflowToolbar>
+										<Title text="Monthly Bills" />
+										<ToolbarSpacer />
+										<Button text="Print" icon="sap-icon://print" type="Transparent"
+											press="onPrintBills" />
+										<Button text="Add Bill" icon="sap-icon://add" type="Transparent"
+											press="onAddBill" />
+									</OverflowToolbar>
+								</headerToolbar>
+								<columns>
+									<Column width="12rem"><Label text="Nickname" /></Column>
+									<Column><Label text="Consumer Name" /></Column>
+									<Column width="12rem"><Label text="Customer ID" /></Column>
+									<Column width="12rem"><Label text="Meter Number" /></Column>
+									<Column width="10rem" hAlign="End"><Label text="Amount" /></Column>
+									<Column width="7rem" hAlign="Center"><Label text="" /></Column>
+								</columns>
+								<items>
+									<ColumnListItem>
+										<cells>
+											<Text text="{elecModel>nickname}" />
+											<Text text="{elecModel>consumer_name}" />
+											<Text text="{elecModel>customer_id}" />
+											<Text text="{elecModel>meter_number}" />
+											<Text text="{elecModel>amount}" />
+											<HBox justifyContent="Center">
+												<Button icon="sap-icon://edit" type="Transparent" tooltip="Edit bill"
+													press="onEditBill" />
+												<Button icon="sap-icon://delete" type="Transparent" tooltip="Delete bill"
+													press="onDeleteBill" />
+											</HBox>
 										</cells>
 									</ColumnListItem>
 								</items>

@@ -101,7 +101,10 @@
       "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"SELECT COUNT\\(*\\) AS txn_rows FROM transaction; SELECT COUNT\\(*\\) AS grouped_rows FROM \\(SELECT client, year, month FROM transaction WHERE machineType <> 'Thokai' AND client IS NOT NULL AND client <> '' GROUP BY client, year, month\\) g;\")",
       "Bash(node --check webapp/controller/ProfitLoss.controller.js)",
       "PowerShell(foreach \\($f in @\\('webapp\\\\view\\\\DailyKhata.view.xml','webapp\\\\view\\\\OpeningBalance.view.xml','webapp\\\\view\\\\ClientLedger.view.xml','webapp\\\\view\\\\Main.view.xml','webapp\\\\view\\\\ProfitLoss.view.xml','webapp\\\\fragments\\\\KhataEntry.fragment.xml'\\)\\) { try { [xml]\\(Get-Content -Raw $f\\) | Out-Null; \"OK  $f\" } catch { \"FAIL $f : $\\($_.Exception.Message\\)\" } })",
-      "PowerShell(try { [xml]\\(Get-Content -Raw 'webapp\\\\view\\\\Invoice.view.xml'\\) | Out-Null; \"Invoice.view.xml OK\" } catch { \"FAILED: $\\($_.Exception.Message\\)\" })"
+      "PowerShell(try { [xml]\\(Get-Content -Raw 'webapp\\\\view\\\\Invoice.view.xml'\\) | Out-Null; \"Invoice.view.xml OK\" } catch { \"FAILED: $\\($_.Exception.Message\\)\" })",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"DESCRIBE electricity_meter; DESCRIBE electricity_bill;\")",
+      "PowerShell(foreach \\($f in @\\('webapp\\\\view\\\\MachineExpense.view.xml','webapp\\\\view\\\\MachineExpenseDetail.view.xml','webapp\\\\view\\\\Main.view.xml','webapp\\\\fragments\\\\ElectricityMeter.fragment.xml','webapp\\\\fragments\\\\ElectricityBill.fragment.xml','webapp\\\\view\\\\DailyKhata.view.xml','webapp\\\\fragments\\\\KhataEntry.fragment.xml'\\)\\) { try { [xml]\\(Get-Content -Raw $f\\) | Out-Null; \"OK  $f\" } catch { \"FAIL $f : $\\($_.Exception.Message\\)\" } })",
+      "PowerShell(try { [xml]\\(Get-Content -Raw 'webapp\\\\view\\\\MachineExpense.view.xml'\\) | Out-Null; \"view OK\" } catch { \"FAIL: $\\($_.Exception.Message\\)\" })"
     ]
   }
 }
