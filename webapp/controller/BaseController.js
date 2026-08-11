@@ -1,4 +1,8 @@
-sap.ui.define(["sap/ui/core/mvc/Controller", "sap/ui/model/json/JSONModel"], function (Controller, JSONModel) {
+sap.ui.define([
+  "sap/ui/core/mvc/Controller",
+  "sap/ui/model/json/JSONModel",
+  "sap/m/MessageBox"
+], function (Controller, JSONModel, MessageBox) {
   "use strict";
 
   return Controller.extend("Hisab.Hisab.controller.BaseController", {
@@ -56,6 +60,57 @@ sap.ui.define(["sap/ui/core/mvc/Controller", "sap/ui/model/json/JSONModel"], fun
           return String(sPicked).trim().toLowerCase() === sName;
         });
       });
+    },
+
+    // ---- New client confirmation (shared by all transaction screens) ----
+    // A client name typed by hand is added to the master automatically. That
+    // is convenient but silently turns a typo into a permanent client, so a
+    // name the master has never seen is confirmed first.
+
+    isNewClient: function (sClient) {
+      var oComboModel = this.getView().getModel("ComboModel");
+      if (!oComboModel || !sClient) {
+        return false;
+      }
+      var sName = String(sClient).trim().toLowerCase();
+      if (!sName) {
+        return false;
+      }
+      var aClients = oComboModel.getProperty("/Clients_results") || [];
+      // With no list loaded there is nothing to compare against, so treat the
+      // name as known rather than prompting on every save.
+      if (!aClients.length) {
+        return false;
+      }
+      return !aClients.some(function (oClient) {
+        return String(oClient.client).trim().toLowerCase() === sName;
+      });
+    },
+
+    /**
+     * Runs fnProceed once it is safe to save. For a name already in the master
+     * that is immediately; for a new name it asks first and only proceeds if
+     * confirmed. fnProceed receives true when the name still has to be created.
+     */
+    confirmNewClient: function (sClient, fnProceed) {
+      if (!this.isNewClient(sClient)) {
+        fnProceed(false);
+        return;
+      }
+      MessageBox.confirm(
+        "\"" + String(sClient).trim() + "\" is not in the client list.\n\n" +
+          "Add it as a new client?",
+        {
+          title: "New Client",
+          actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
+          emphasizedAction: MessageBox.Action.OK,
+          onClose: function (sAction) {
+            if (sAction === MessageBox.Action.OK) {
+              fnProceed(true);
+            }
+          }
+        }
+      );
     },
 
     // ---- Recent clients (shared by all transaction screens) ----
