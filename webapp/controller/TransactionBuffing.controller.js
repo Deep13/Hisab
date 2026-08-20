@@ -128,64 +128,71 @@ sap.ui.define(
           if (!temp.Date || !temp.Client || !temp.Quantity || !temp.Rate) {
             alert("Fill all details");
           } else {
-            var dataLabor = {
-              id: sLaborName.toLowerCase().replace(/ /g, ""),
-              Labor: sLaborName,
+            // A client the master has never seen is confirmed before anything is
+            // written, so a typo never reaches the transaction either.
+            var doSave = function (bIsNewClient) {
+              var dataLabor = {
+                id: sLaborName.toLowerCase().replace(/ /g, ""),
+                Labor: sLaborName,
+              };
+              $.ajax({
+                url: that.uri,
+                type: "POST",
+                data: {
+                  method: "onCreateLabor",
+                  data: JSON.stringify(dataLabor),
+                },
+                dataType: "json",
+                success: function (dataClient) {
+                  console.log("success");
+                },
+                error: function (request, error) {
+                  console.log(error);
+                },
+              });
+              var data = JSON.stringify({
+                client: temp.Client,
+                labour: sLaborName,
+                date: temp.Date,
+                month: parseInt(temp.Date.substring(3, 5), 10),
+                cc: sOffice,
+                rate: temp.Rate,
+                quantity: temp.Quantity,
+                machineType: "Buffing",
+                total: temp.Rate * temp.Quantity,
+                year: parseInt(temp.Date.substring(6), 10),
+              });
+              $.ajax({
+                url: that.uri,
+                type: "POST",
+                data: {
+                  method: "onCreateATransaction",
+                  data: data,
+                },
+                crossDomain: true,
+                dataType: "json",
+                success: function (sData) {
+                  // var messages = sData[0] + "\n";
+                  // that.onRefresh();
+                  that.getView().byId("datePicker").focus();
+                  that.updateValues();
+                  // that._handleRouteMatched();
+                  // MessageBox.success(messages);
+                },
+                error: function (request, error) {
+                  MessageBox.error(request.responseText);
+                  // if (i === results.length && messages.length > 0) {
+                  //   MessageBox.success(messages);
+                  //   that._handleRouteMatched();
+                  // }
+                },
+              });
+              if (bIsNewClient) {
+                that.saveClient(temp.Client);
+              }
+              that.addRecentClient(temp.Client);
             };
-            $.ajax({
-              url: that.uri,
-              type: "POST",
-              data: {
-                method: "onCreateLabor",
-                data: JSON.stringify(dataLabor),
-              },
-              dataType: "json",
-              success: function (dataClient) {
-                console.log("success");
-              },
-              error: function (request, error) {
-                console.log(error);
-              },
-            });
-            var data = JSON.stringify({
-              client: temp.Client,
-              labour: sLaborName,
-              date: temp.Date,
-              month: parseInt(temp.Date.substring(3, 5), 10),
-              cc: sOffice,
-              rate: temp.Rate,
-              quantity: temp.Quantity,
-              machineType: "Buffing",
-              total: temp.Rate * temp.Quantity,
-              year: parseInt(temp.Date.substring(6), 10),
-            });
-            $.ajax({
-              url: that.uri,
-              type: "POST",
-              data: {
-                method: "onCreateATransaction",
-                data: data,
-              },
-              crossDomain: true,
-              dataType: "json",
-              success: function (sData) {
-                // var messages = sData[0] + "\n";
-                // that.onRefresh();
-                that.getView().byId("datePicker").focus();
-                that.updateValues();
-                // that._handleRouteMatched();
-                // MessageBox.success(messages);
-              },
-              error: function (request, error) {
-                MessageBox.error(request.responseText);
-                // if (i === results.length && messages.length > 0) {
-                //   MessageBox.success(messages);
-                //   that._handleRouteMatched();
-                // }
-              },
-            });
-            that.saveClient(temp.Client);
-            that.addRecentClient(temp.Client);
+            that.confirmNewClient(temp.Client, doSave);
           }
         } else {
           alert("Labor ka naam nhi hai");

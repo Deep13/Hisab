@@ -104,7 +104,9 @@
       "PowerShell(try { [xml]\\(Get-Content -Raw 'webapp\\\\view\\\\Invoice.view.xml'\\) | Out-Null; \"Invoice.view.xml OK\" } catch { \"FAILED: $\\($_.Exception.Message\\)\" })",
       "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root hisabkitab -e \"DESCRIBE electricity_meter; DESCRIBE electricity_bill;\")",
       "PowerShell(foreach \\($f in @\\('webapp\\\\view\\\\MachineExpense.view.xml','webapp\\\\view\\\\MachineExpenseDetail.view.xml','webapp\\\\view\\\\Main.view.xml','webapp\\\\fragments\\\\ElectricityMeter.fragment.xml','webapp\\\\fragments\\\\ElectricityBill.fragment.xml','webapp\\\\view\\\\DailyKhata.view.xml','webapp\\\\fragments\\\\KhataEntry.fragment.xml'\\)\\) { try { [xml]\\(Get-Content -Raw $f\\) | Out-Null; \"OK  $f\" } catch { \"FAIL $f : $\\($_.Exception.Message\\)\" } })",
-      "PowerShell(try { [xml]\\(Get-Content -Raw 'webapp\\\\view\\\\MachineExpense.view.xml'\\) | Out-Null; \"view OK\" } catch { \"FAIL: $\\($_.Exception.Message\\)\" })"
+      "PowerShell(try { [xml]\\(Get-Content -Raw 'webapp\\\\view\\\\MachineExpense.view.xml'\\) | Out-Null; \"view OK\" } catch { \"FAIL: $\\($_.Exception.Message\\)\" })",
+      "Bash(node --check webapp/controller/TransactionShaving.controller.js)",
+      "Bash(node --check webapp/controller/TransactionThokai.controller.js)"
     ]
   }
 }

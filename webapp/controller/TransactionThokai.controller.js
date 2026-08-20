@@ -122,10 +122,19 @@ sap.ui.define(
         var sLaborName = "";
         // get All the records
         var aRecords = this.byId("idTable").getModel().getData();
+        // This screen saves many rows at once, so every name the master has
+        // never seen is collected and confirmed in one prompt rather than
+        // one dialog per row.
+        var aNewClients = [];
+        var mSeenNew = {};
         aRecords.results.forEach(function (temp) {
           if (!(!temp.Date && !temp.Client && !temp.Quantity && !temp.Rate)) {
-            if (!that.ClientList.includes(temp.Client)) {
-              that.saveClient(temp.Client);
+            // De-duplicated case-insensitively, the same way isNewClient
+            // matches, so "New One" and "new one" are not created twice.
+            var sKey = String(temp.Client).trim().toLowerCase();
+            if (that.isNewClient(temp.Client) && !mSeenNew[sKey]) {
+              mSeenNew[sKey] = true;
+              aNewClients.push(String(temp.Client).trim());
             }
             results.push({
               client: temp.Client,
@@ -138,37 +147,69 @@ sap.ui.define(
               machineType: "Thokai",
               total: temp.Rate * temp.Quantity,
             });
-            that.addRecentClient(temp.Client);
           } else {
             flag = false;
           }
         });
         if (flag) {
-          for (var i = 0; i < results.length; i++) {
-            var data = JSON.stringify(results[i]);
-            $.ajax({
-              url: that.uri,
-              type: "POST",
-              data: {
-                method: "onCreateATransaction",
-                data: data,
-              },
-              crossDomain: true,
-              dataType: "json",
-              success: function (sData) {
-                messages = messages + sData[0] + "\n";
-                if (i === results.length) {
-                  MessageBox.success(messages);
-                }
-              },
-              error: function (request, error) {
-                MessageBox.error(request.responseText);
-                if (i === results.length && messages.length > 0) {
-                  MessageBox.success(messages);
-                  that._handleRouteMatched();
-                }
-              },
+          var doSave = function () {
+            aNewClients.forEach(function (sClient) {
+              that.saveClient(sClient);
             });
+            results.forEach(function (oRow) {
+              that.addRecentClient(oRow.client);
+            });
+            for (var i = 0; i < results.length; i++) {
+              var data = JSON.stringify(results[i]);
+              $.ajax({
+                url: that.uri,
+                type: "POST",
+                data: {
+                  method: "onCreateATransaction",
+                  data: data,
+                },
+                crossDomain: true,
+                dataType: "json",
+                success: function (sData) {
+                  messages = messages + sData[0] + "\n";
+                  if (i === results.length) {
+                    MessageBox.success(messages);
+                  }
+                },
+                error: function (request, error) {
+                  MessageBox.error(request.responseText);
+                  if (i === results.length && messages.length > 0) {
+                    MessageBox.success(messages);
+                    that._handleRouteMatched();
+                  }
+                },
+              });
+            }
+          };
+
+          if (!aNewClients.length) {
+            doSave();
+          } else {
+            MessageBox.confirm(
+              (aNewClients.length === 1
+                ? "\"" + aNewClients[0] + "\" is not in the client list."
+                : "These names are not in the client list:\n\n  " +
+                  aNewClients.join("\n  ")) +
+                "\n\n" +
+                (aNewClients.length === 1
+                  ? "Add it as a new client?"
+                  : "Add them as new clients?"),
+              {
+                title: aNewClients.length === 1 ? "New Client" : "New Clients",
+                actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
+                emphasizedAction: MessageBox.Action.OK,
+                onClose: function (sAction) {
+                  if (sAction === MessageBox.Action.OK) {
+                    doSave();
+                  }
+                },
+              }
+            );
           }
         } else {
           if (!clientFlag) {
