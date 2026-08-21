@@ -1,0 +1,11 @@
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
+	<ViewSettingsDialog id="idClientBalanceSortDialog" confirm="onBalanceSortConfirm">
+		<sortItems>
+			<ViewSettingsItem key="client" text="Client name" selected="true" />
+			<ViewSettingsItem key="balance" text="Balance" />
+			<ViewSettingsItem key="od" text="OD" />
+			<ViewSettingsItem key="billed" text="Billed" />
+			<ViewSettingsItem key="paid" text="Paid" />
+		</sortItems>
+	</ViewSettingsDialog>
+</core:FragmentDefinition>

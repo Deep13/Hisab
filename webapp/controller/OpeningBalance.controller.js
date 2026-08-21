@@ -4,8 +4,10 @@ sap.ui.define(
     "sap/ui/model/json/JSONModel",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
+    "sap/ui/core/Fragment",
+    "sap/ui/model/Sorter",
   ],
-  function (Controller, JSONModel, MessageBox, MessageToast) {
+  function (Controller, JSONModel, MessageBox, MessageToast, Fragment, Sorter) {
     "use strict";
 
     function toIsoDate(oDate) {
@@ -146,6 +148,42 @@ sap.ui.define(
           : aAll);
       },
 
+      onSortOpenings: function () {
+        var that = this;
+        if (this._pOpeningSort) {
+          this._pOpeningSort.then(function (oDialog) {
+            oDialog.open();
+          });
+          return;
+        }
+        this._pOpeningSort = Fragment.load({
+          id: this.getView().getId(),
+          name: "Hisab.Hisab.fragments.OpeningSort",
+          controller: this,
+        }).then(function (oDialog) {
+          that.getView().addDependent(oDialog);
+          oDialog.open();
+          return oDialog;
+        });
+      },
+
+      // Sorting only reorders the binding, so amounts typed into rows keep
+      // pointing at the same client and no edit is lost.
+      onOpeningSortConfirm: function (oEvent) {
+        var oItem = oEvent.getParameter("sortItem");
+        if (!oItem) {
+          return;
+        }
+        var sKey = oItem.getKey();
+        var oSorter = new Sorter(sKey, oEvent.getParameter("sortDescending"));
+        if (sKey === "amount") {
+          oSorter.fnCompare = function (a, b) {
+            return (parseFloat(a) || 0) - (parseFloat(b) || 0);
+          };
+        }
+        this.byId("idClientTable").getBinding("items").sort(oSorter);
+      },
+
       onOpeningAmountChange: function () {
         this._updateOpeningTotal();
       },
@@ -173,17 +211,14 @@ sap.ui.define(
           return;
         }
 
-        // Only clients with a figure are stored; the rest simply start at zero.
-        var aRows = (oModel.getProperty("/all") || [])
-          .map(function (r) {
-            return { client: r.client, amount: parseFloat(r.amount) || 0 };
-          })
-          .filter(function (r) {
-            return r.amount !== 0;
-          });
+        // The whole sheet goes up, zeros included, so that clearing a figure
+        // actually clears it and the as-of date is always recorded.
+        var aRows = (oModel.getProperty("/all") || []).map(function (r) {
+          return { client: r.client, amount: parseFloat(r.amount) || 0 };
+        });
 
         if (!aRows.length) {
-          MessageBox.information("No opening balances entered yet");
+          MessageBox.information("There are no clients to save");
           return;
         }
 

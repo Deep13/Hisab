@@ -3,9 +3,14 @@ sap.ui.define(
     "../controller/BaseController",
     "sap/ui/model/json/JSONModel",
     "sap/m/MessageBox",
+    "sap/ui/core/Fragment",
+    "sap/ui/model/Sorter",
   ],
-  function (Controller, JSONModel, MessageBox) {
+  function (Controller, JSONModel, MessageBox, Fragment, Sorter) {
     "use strict";
+
+    // Everything except the client name sorts as a number.
+    var NUMERIC_SORT_KEYS = ["od", "billed", "paid", "balance"];
 
     var MONTH_NAMES = [
       "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
@@ -35,9 +40,15 @@ sap.ui.define(
 
       _handleRouteMatched: function () {
         var oNow = new Date();
+        var sMonth = ("0" + (oNow.getMonth() + 1)).slice(-2);
+        var sYear = oNow.getFullYear().toString();
         if (!this.byId("idBalMonth").getSelectedKey()) {
-          this.byId("idBalMonth").setSelectedKey(("0" + (oNow.getMonth() + 1)).slice(-2));
-          this.byId("idBalYear").setSelectedKey(oNow.getFullYear().toString());
+          this.byId("idBalMonth").setSelectedKey(sMonth);
+          this.byId("idBalYear").setSelectedKey(sYear);
+        }
+        if (!this.byId("idLedgerMonth").getSelectedKey()) {
+          this.byId("idLedgerMonth").setSelectedKey(sMonth);
+          this.byId("idLedgerYear").setSelectedKey(sYear);
         }
         this._loadClients();
       },
@@ -70,21 +81,31 @@ sap.ui.define(
 
       // ==================== ONE CLIENT ====================
 
-      onClientChange: function (oEvent) {
-        var oItem = oEvent.getParameter("selectedItem");
-        if (!oItem) {
+      // Picking a client no longer fetches anything - the client, month and
+      // year are chosen first and only this button goes to the server.
+      onShowLedger: function () {
+        var sClient = this.byId("idLedgerClient").getSelectedKey();
+        if (!sClient) {
+          MessageBox.information("Pick a client first");
           return;
         }
-        this._loadLedger(oItem.getKey());
+        this._loadLedger(
+          sClient,
+          parseInt(this.byId("idLedgerMonth").getSelectedKey(), 10),
+          parseInt(this.byId("idLedgerYear").getSelectedKey(), 10)
+        );
       },
 
-      _loadLedger: function (sClient) {
+      _loadLedger: function (sClient, iMonth, iYear) {
         var that = this;
         sap.ui.core.BusyIndicator.show(0);
         $.ajax({
           url: this.uri,
           type: "POST",
-          data: { method: "getClientLedger", data: JSON.stringify({ client: sClient }) },
+          data: {
+            method: "getClientLedger",
+            data: JSON.stringify({ client: sClient, month: iMonth, year: iYear }),
+          },
           dataType: "json",
           success: function (res) {
             sap.ui.core.BusyIndicator.hide();
@@ -102,27 +123,17 @@ sap.ui.define(
       },
 
       _setLedgerModel: function (res) {
-        var totalBilled = 0;
-        var totalPaid = 0;
-
-        res.rows = (res.rows || []).map(function (r) {
-          totalBilled += r.billed;
-          totalPaid += r.paid;
-          r.monthLabel = MONTH_NAMES[r.month - 1] + " " + r.year;
-          r.billedText = money(r.billed);
-          r.paidText = money(r.paid);
-          r.balanceText = money(r.balance);
-          r.balanceState = balanceState(r.balance);
-          return r;
-        });
         res.payments = (res.payments || []).map(function (p) {
           p.amountText = money(p.amount);
           return p;
         });
 
-        res.openingText = money(res.opening);
-        res.billedText = money(totalBilled);
-        res.paidText = money(totalPaid);
+        res.periodLabel = MONTH_NAMES[res.month - 1] + " " + res.year;
+        res.paymentsTitle = "Payments Received (" + res.payments.length + ")";
+        res.odText = money(res.od);
+        res.odState = balanceState(res.od);
+        res.billedText = money(res.billed);
+        res.paidText = money(res.paid);
         res.balanceText = money(res.balance);
         res.balanceState = balanceState(res.balance);
 
@@ -179,19 +190,88 @@ sap.ui.define(
           return r;
         });
 
-        var bOnlyDues = this.byId("idOnlyDues").getSelected();
-        var visible = bOnlyDues
-          ? rows.filter(function (r) { return r.balance !== 0; })
-          : rows;
-
-        var oModel = new JSONModel({ all: rows, visible: visible });
+        var oModel = new JSONModel({ all: rows, visible: rows });
         oModel.setSizeLimit(2000);
         this.getView().setModel(oModel, "balanceModel");
+
+        this._applyBalanceFilters();
+        // A new model means a new binding, so the chosen order has to be put
+        // back on it or changing the month would silently reset the sort.
+        this._applyBalanceSorter();
+      },
+
+      // The search box and the dues-only checkbox narrow the same list, so both
+      // are applied together against the untouched `all` copy.
+      onSearchBalances: function () {
+        this._applyBalanceFilters();
+      },
+
+      _applyBalanceFilters: function () {
+        var oModel = this.getView().getModel("balanceModel");
+        if (!oModel) {
+          return;
+        }
+        var sQuery = (this.byId("idBalanceSearch").getValue() || "").trim().toLowerCase();
+        var bOnlyDues = this.byId("idOnlyDues").getSelected();
+
+        var visible = (oModel.getProperty("/all") || []).filter(function (r) {
+          if (bOnlyDues && r.balance === 0) {
+            return false;
+          }
+          return !sQuery || r.client.toLowerCase().indexOf(sQuery) > -1;
+        });
+        oModel.setProperty("/visible", visible);
 
         var total = visible.reduce(function (s, r) { return s + r.balance; }, 0);
         this.byId("idBalanceTitle").setText(
           "Client Balances (" + visible.length + ")  -  Total " + money(total)
         );
+      },
+
+      onSortBalances: function () {
+        var that = this;
+        if (this._pBalanceSort) {
+          this._pBalanceSort.then(function (oDialog) {
+            oDialog.open();
+          });
+          return;
+        }
+        this._pBalanceSort = Fragment.load({
+          id: this.getView().getId(),
+          name: "Hisab.Hisab.fragments.ClientBalanceSort",
+          controller: this,
+        }).then(function (oDialog) {
+          that.getView().addDependent(oDialog);
+          oDialog.open();
+          return oDialog;
+        });
+      },
+
+      onBalanceSortConfirm: function (oEvent) {
+        var oItem = oEvent.getParameter("sortItem");
+        if (!oItem) {
+          return;
+        }
+        this._sBalanceSortKey = oItem.getKey();
+        this._bBalanceSortDesc = oEvent.getParameter("sortDescending");
+        this._applyBalanceSorter();
+      },
+
+      _applyBalanceSorter: function () {
+        if (!this._sBalanceSortKey) {
+          return;
+        }
+        var oBinding = this.byId("idBalanceTable").getBinding("items");
+        if (!oBinding) {
+          return;
+        }
+        var oSorter = new Sorter(this._sBalanceSortKey, this._bBalanceSortDesc);
+        if (NUMERIC_SORT_KEYS.indexOf(this._sBalanceSortKey) > -1) {
+          oSorter.fnCompare = function (a, b) {
+            return (parseFloat(a) || 0) - (parseFloat(b) || 0);
+          };
+        }
+        oBinding.sort(oSorter);
       },
 
       // ==================== PRINT ====================
@@ -240,17 +320,19 @@ sap.ui.define(
         } else {
           var d = oModel.getData();
           html += '<h1>' + esc(d.client) + '</h1>';
-          html += '<h2>Balance Due: ' + d.balanceText + '</h2>';
-          html += '<table><tr><th>Month</th><th class="num">Billed</th><th class="num">Paid</th>'
-            + '<th class="num">Balance</th></tr>';
-          html += '<tr><td>Opening</td><td class="num">-</td><td class="num">-</td>'
-            + '<td class="num">' + d.openingText + '</td></tr>';
-          (d.rows || []).forEach(function (r) {
-            html += '<tr><td>' + esc(r.monthLabel) + '</td><td class="num">' + r.billedText
-              + '</td><td class="num">' + r.paidText + '</td><td class="num">' + r.balanceText + '</td></tr>';
-          });
-          html += '<tr class="total"><td>Total</td><td class="num">' + d.billedText
+          html += '<h2>' + esc(d.periodLabel) + '</h2>';
+          html += '<table><tr><th class="num">OD</th><th class="num">Billed</th>'
+            + '<th class="num">Paid</th><th class="num">Balance</th></tr>';
+          html += '<tr class="total"><td class="num">' + d.odText + '</td><td class="num">' + d.billedText
             + '</td><td class="num">' + d.paidText + '</td><td class="num">' + d.balanceText + '</td></tr>';
+          html += '</table>';
+
+          html += '<h2 style="text-align:left;margin:18px 0 8px">' + esc(d.paymentsTitle) + '</h2>';
+          html += '<table><tr><th>Date</th><th>Remark</th><th class="num">Amount</th></tr>';
+          (d.payments || []).forEach(function (p) {
+            html += '<tr><td>' + esc(p.date) + '</td><td>' + esc(p.note)
+              + '</td><td class="num">' + p.amountText + '</td></tr>';
+          });
           html += '</table>';
         }
 

@@ -38,6 +38,8 @@
 						<ToolbarSpacer/>
 						<SearchField id="idClientSearch" width="16rem" placeholder="Find a client"
 							liveChange="onSearchClients" class="sapUiTinyMarginEnd"/>
+						<Button icon="sap-icon://sort" text="Sort" press="onSortOpenings"
+							class="sapUiTinyMarginEnd"/>
 						<Button text="Save Client Balances" icon="sap-icon://save" type="Emphasized"
 							press="onSaveClientOpenings"/>
 					</OverflowToolbar>

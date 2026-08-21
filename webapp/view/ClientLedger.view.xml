@@ -23,53 +23,69 @@
 							<VBox class="sapUiSmallMarginEnd">
 								<Label text="Client" design="Bold"/>
 								<ComboBox id="idLedgerClient" width="18rem" placeholder="Select a client"
-									change="onClientChange" items="{ClientModel>/Clients_results}">
+									items="{ClientModel>/Clients_results}">
 									<core:Item key="{ClientModel>client}" text="{ClientModel>client}"/>
 								</ComboBox>
 							</VBox>
+							<VBox class="sapUiSmallMarginEnd">
+								<Label text="Month" design="Bold"/>
+								<Select id="idLedgerMonth">
+									<core:Item key="01" text="January"/>
+									<core:Item key="02" text="February"/>
+									<core:Item key="03" text="March"/>
+									<core:Item key="04" text="April"/>
+									<core:Item key="05" text="May"/>
+									<core:Item key="06" text="June"/>
+									<core:Item key="07" text="July"/>
+									<core:Item key="08" text="August"/>
+									<core:Item key="09" text="September"/>
+									<core:Item key="10" text="October"/>
+									<core:Item key="11" text="November"/>
+									<core:Item key="12" text="December"/>
+								</Select>
+							</VBox>
+							<VBox class="sapUiSmallMarginEnd">
+								<Label text="Year" design="Bold"/>
+								<Select id="idLedgerYear">
+									<core:Item key="2024" text="2024"/>
+									<core:Item key="2025" text="2025"/>
+									<core:Item key="2026" text="2026"/>
+									<core:Item key="2027" text="2027"/>
+								</Select>
+							</VBox>
+							<VBox>
+								<Label text=" "/>
+								<Button id="idShowLedger" text="Show Ledger" type="Emphasized"
+									icon="sap-icon://search" press="onShowLedger"/>
+							</VBox>
 						</HBox>
 
-						<HBox class="sapUiSmallMarginBegin sapUiSmallMarginEnd" wrapping="Wrap">
-							<ObjectStatus title="Opening" text="{ledgerModel>/openingText}"
-								class="sapUiMediumMarginEnd"/>
-							<ObjectStatus title="Total Billed" text="{ledgerModel>/billedText}"
-								class="sapUiMediumMarginEnd"/>
-							<ObjectStatus title="Total Paid" text="{ledgerModel>/paidText}" state="Success"
-								class="sapUiMediumMarginEnd"/>
-							<ObjectStatus title="Balance Due" text="{ledgerModel>/balanceText}"
-								state="{ledgerModel>/balanceState}"/>
-						</HBox>
-
-						<Table id="idLedgerTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false"
-							fixedLayout="false" items="{ledgerModel>/rows}">
+						<Panel width="auto" class="sapUiSmallMargin" accessibleRole="Region"
+							visible="{= !!${ledgerModel>/client} }">
 							<headerToolbar>
 								<OverflowToolbar>
-									<Title text="Month by Month"/>
+									<Title text="{ledgerModel>/periodLabel}"/>
 								</OverflowToolbar>
 							</headerToolbar>
-							<columns>
-								<Column><Label text="Month"/></Column>
-								<Column width="10rem" hAlign="End"><Label text="Billed"/></Column>
-								<Column width="10rem" hAlign="End"><Label text="Paid"/></Column>
-								<Column width="12rem" hAlign="End"><Label text="Balance"/></Column>
-							</columns>
-							<items>
-								<ColumnListItem>
-									<cells>
-										<Text text="{ledgerModel>monthLabel}"/>
-										<Text text="{ledgerModel>billedText}"/>
-										<Text text="{ledgerModel>paidText}"/>
-										<ObjectStatus text="{ledgerModel>balanceText}" state="{ledgerModel>balanceState}"/>
-									</cells>
-								</ColumnListItem>
-							</items>
-						</Table>
+							<content>
+								<HBox class="sapUiSmallMargin" wrapping="Wrap">
+									<ObjectStatus title="OD (brought forward)" text="{ledgerModel>/odText}"
+										state="{ledgerModel>/odState}" class="sapUiLargeMarginEnd"/>
+									<ObjectStatus title="Billed" text="{ledgerModel>/billedText}"
+										class="sapUiLargeMarginEnd"/>
+									<ObjectStatus title="Paid" text="{ledgerModel>/paidText}" state="Success"
+										class="sapUiLargeMarginEnd"/>
+									<ObjectStatus title="Balance" text="{ledgerModel>/balanceText}"
+										state="{ledgerModel>/balanceState}"/>
+								</HBox>
+							</content>
+						</Panel>
 
 						<Table id="idPaymentTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false"
 							fixedLayout="false" items="{ledgerModel>/payments}">
 							<headerToolbar>
 								<OverflowToolbar>
-									<Title text="Payments Received"/>
+									<Title text="{ledgerModel>/paymentsTitle}"/>
 								</OverflowToolbar>
 							</headerToolbar>
 							<columns>
@@ -78,7 +94,7 @@
 								<Column width="10rem" hAlign="End"><Label text="Amount"/></Column>
 							</columns>
 							<items>
-								<ColumnListItem>
+								<ColumnListItem highlight="{= ${ledgerModel>inMonth} ? 'Success' : 'None' }">
 									<cells>
 										<Text text="{ledgerModel>date}"/>
 										<Text text="{ledgerModel>note}"/>
@@ -120,7 +136,7 @@
 							<VBox>
 								<Label text=" "/>
 								<CheckBox id="idOnlyDues" text="Only clients with a balance" selected="true"
-									select="onBalancePeriodChange"/>
+									select="onSearchBalances"/>
 							</VBox>
 						</HBox>
 						<Table id="idBalanceTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false"
@@ -129,6 +145,10 @@
 							<headerToolbar>
 								<OverflowToolbar>
 									<Title id="idBalanceTitle" text="Client Balances"/>
+									<ToolbarSpacer/>
+									<SearchField id="idBalanceSearch" width="14rem" placeholder="Find a client"
+										liveChange="onSearchBalances"/>
+									<Button icon="sap-icon://sort" text="Sort" press="onSortBalances"/>
 								</OverflowToolbar>
 							</headerToolbar>
 							<columns>

@@ -1365,6 +1365,9 @@ function saveClientOpenings() {
         return json_encode(["status" => "failed", "error" => "Table 'client_opening' does not exist. Please run sql/daily_khata.sql."]);
     }
 
+    // The whole sheet is written, zeros included. Skipping them would leave a
+    // cleared figure lingering at its old amount, and would lose the as-of date
+    // entirely on a sheet where every client happens to be square.
     $conn->begin_transaction();
     $saved = 0;
     foreach ($rows as $row) {
@@ -1389,7 +1392,8 @@ function saveClientOpenings() {
  * Opening balances keyed by lowercased client name. `cutoff` is the period
  * (YYYYMM) the opening figure was taken at: anything billed before it is
  * already inside the opening amount and must not be counted again. A client
- * with no opening row has cutoff 0, so their whole history counts.
+ * with no opening row falls back to clientOpeningCutoff(), so they start at
+ * zero on the same date rather than dragging their whole history in.
  */
 function clientOpeningMap($conn) {
     $map = [];
@@ -1413,6 +1417,30 @@ function clientOpeningMap($conn) {
 }
 
 /**
+ * The period (YYYYMM) the opening-balance sheet was last drawn up at.
+ *
+ * Opening balances are maintained for every client at once against a single
+ * as-of date, so this is the line the books were drawn under. A client added
+ * after that sheet was saved has no row of their own, and starts fresh from
+ * this same date - the app must not quietly rebuild an OD for them out of
+ * their whole billing history.
+ *
+ * Returns 0 when no opening balances have been maintained at all, which keeps
+ * a brand new install showing the full history until the sheet is filled in.
+ */
+function clientOpeningCutoff($conn) {
+    $result = @$conn->query("SELECT MAX(as_of_date) AS as_of FROM client_opening");
+    if ($result) {
+        $row = $result->fetch_assoc();
+        if (!empty($row["as_of"])) {
+            $ts = strtotime($row["as_of"]);
+            return (int)date("Y", $ts) * 100 + (int)date("n", $ts);
+        }
+    }
+    return 0;
+}
+
+/**
  * Per-client dues for a month. OD is what was owed going into the month:
  * opening balance + everything billed since the opening cut-off but before
  * this month - every payment received in that same window. The month's own
@@ -1430,13 +1458,12 @@ function getClientBalances() {
         return json_encode(["status" => "failed", "error" => "Valid month and year are required"]);
     }
     $selected = $year * 100 + $month;
-    $firstOfMonth = sprintf("%04d-%02d-01", $year, $month);
-    $lastOfMonth = date("Y-m-t", strtotime($firstOfMonth));
 
     $openings = clientOpeningMap($conn);
+    $defaultCutoff = clientOpeningCutoff($conn);
 
     $byClient = [];
-    $touch = function (&$byClient, $name) use ($openings) {
+    $touch = function (&$byClient, $name) use ($openings, $defaultCutoff) {
         $key = strtolower(trim($name));
         if ($key === '') {
             return null;
@@ -1445,7 +1472,7 @@ function getClientBalances() {
             $byClient[$key] = [
                 "client" => trim($name),
                 "opening" => isset($openings[$key]) ? $openings[$key]["amount"] : 0.0,
-                "cutoff" => isset($openings[$key]) ? $openings[$key]["cutoff"] : 0,
+                "cutoff" => isset($openings[$key]) ? $openings[$key]["cutoff"] : $defaultCutoff,
                 "billedBefore" => 0.0,
                 "paidBefore" => 0.0,
                 "billed" => 0.0,
@@ -1472,13 +1499,16 @@ function getClientBalances() {
             continue;
         }
         $period = (int)$row["year"] * 100 + (int)$row["month"];
-        if ($period < $byClient[$key]["cutoff"] || $period > $selected) {
+        if ($period > $selected) {
             continue;
         }
-        if ($period < $selected) {
-            $byClient[$key]["billedBefore"] += (float)$row["billed"];
-        } else {
+        if ($period === $selected) {
+            // The month being looked at always reports its own billing, even
+            // when it falls before the opening cut-off - the cut-off decides
+            // what rolls into OD, not whether the month itself is visible.
             $byClient[$key]["billed"] += (float)$row["billed"];
+        } elseif ($period >= $byClient[$key]["cutoff"]) {
+            $byClient[$key]["billedBefore"] += (float)$row["billed"];
         }
     }
 
@@ -1499,20 +1529,24 @@ function getClientBalances() {
             }
             $ts = strtotime($row["entry_date"]);
             $period = (int)date("Y", $ts) * 100 + (int)date("n", $ts);
-            if ($period < $byClient[$key]["cutoff"] || $period > $selected) {
+            if ($period > $selected) {
                 continue;
             }
-            if ($row["entry_date"] < $firstOfMonth) {
-                $byClient[$key]["paidBefore"] += (float)$row["paid"];
-            } elseif ($row["entry_date"] <= $lastOfMonth) {
+            if ($period === $selected) {
                 $byClient[$key]["paid"] += (float)$row["paid"];
+            } elseif ($period >= $byClient[$key]["cutoff"]) {
+                $byClient[$key]["paidBefore"] += (float)$row["paid"];
             }
         }
     }
 
     $rows = [];
     foreach ($byClient as $entry) {
-        $od = $entry["opening"] + $entry["billedBefore"] - $entry["paidBefore"];
+        // On a month earlier than the cut-off the opening figure has not been
+        // struck yet, and pre-cut-off dues are deliberately not rebuilt from
+        // history, so that month simply stands on its own.
+        $opening = $selected >= $entry["cutoff"] ? $entry["opening"] : 0.0;
+        $od = $opening + $entry["billedBefore"] - $entry["paidBefore"];
         $entry["od"] = $od;
         $entry["balance"] = $od + $entry["billed"] - $entry["paid"];
         $rows[] = $entry;
@@ -1524,33 +1558,51 @@ function getClientBalances() {
     return json_encode(["status" => "success", "month" => $month, "year" => $year, "rows" => $rows]);
 }
 
-/** Month-by-month money history for one client, with a running balance. */
+/**
+ * One month's statement for one client: what was owed going into the month
+ * (OD), what was billed and paid during it, the closing balance, and the
+ * payments received up to and including that month.
+ *
+ * OD is worked out exactly the way getClientBalances() does it, so the One
+ * Client tab and the All Clients tab always agree on the same figure.
+ */
 function getClientLedger() {
     $conn = getDbConnection();
     $obj = getPostData();
     $client = trim($obj->client ?? '');
+    $month = (int)($obj->month ?? 0);
+    $year = (int)($obj->year ?? 0);
 
     if ($client === '') {
         return json_encode(["status" => "failed", "error" => "Client is required"]);
     }
+    if ($month < 1 || $month > 12 || $year < 2000) {
+        return json_encode(["status" => "failed", "error" => "Valid month and year are required"]);
+    }
+    $selected = $year * 100 + $month;
 
-    $opening = 0.0;
-    $cutoff = 0;
     $openings = clientOpeningMap($conn);
     $key = strtolower(trim($client));
+
+    // No opening row means the balance was maintained as zero, so the ledger
+    // still starts at the sheet's as-of date - it does not reopen the history.
+    $opening = 0.0;
+    $cutoff = clientOpeningCutoff($conn);
     if (isset($openings[$key])) {
         $opening = $openings[$key]["amount"];
         $cutoff = $openings[$key]["cutoff"];
     }
 
-    $periods = [];
-    $touch = function (&$periods, $year, $month) {
-        $key = sprintf("%04d-%02d", $year, $month);
-        if (!isset($periods[$key])) {
-            $periods[$key] = ["year" => (int)$year, "month" => (int)$month, "billed" => 0.0, "paid" => 0.0];
-        }
-        return $key;
-    };
+    // On a month earlier than the cut-off that opening figure has not been
+    // struck yet, so it must not be applied to the month being looked at.
+    if ($selected < $cutoff) {
+        $opening = 0.0;
+    }
+
+    $billedBefore = 0.0;
+    $paidBefore = 0.0;
+    $billed = 0.0;
+    $paid = 0.0;
 
     $stmt = $conn->prepare(
         "SELECT year, month, COALESCE(SUM(total), 0) AS billed
@@ -1562,12 +1614,17 @@ function getClientLedger() {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
-        // Periods before the opening cut-off are already inside the opening figure.
-        if ((int)$row["year"] * 100 + (int)$row["month"] < $cutoff) {
+        $period = (int)$row["year"] * 100 + (int)$row["month"];
+        if ($period > $selected) {
             continue;
         }
-        $key = $touch($periods, $row["year"], $row["month"]);
-        $periods[$key]["billed"] += (float)$row["billed"];
+        if ($period === $selected) {
+            // The month asked for always reports its own billing, cut-off or not.
+            $billed += (float)$row["billed"];
+        } elseif ($period >= $cutoff) {
+            // Anything before the cut-off is already inside the opening figure.
+            $billedBefore += (float)$row["billed"];
+        }
     }
 
     $payments = [];
@@ -1583,35 +1640,39 @@ function getClientLedger() {
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
             $ts = strtotime($row["entry_date"]);
-            if ((int)date("Y", $ts) * 100 + (int)date("n", $ts) < $cutoff) {
+            $period = (int)date("Y", $ts) * 100 + (int)date("n", $ts);
+            if ($period > $selected) {
                 continue;
             }
-            $key = $touch($periods, (int)date("Y", $ts), (int)date("n", $ts));
-            $periods[$key]["paid"] += (float)$row["amount"];
+            if ($period === $selected) {
+                $paid += (float)$row["amount"];
+            } elseif ($period >= $cutoff) {
+                $paidBefore += (float)$row["amount"];
+            }
+            // The history runs to the statement month and no further, so a
+            // later payment can never make a past statement look settled.
             $payments[] = [
                 "date" => $row["entry_date"],
                 "note" => $row["note"],
                 "amount" => (float)$row["amount"],
+                "inMonth" => $period === $selected,
             ];
         }
     }
 
-    ksort($periods);
-    $running = $opening;
-    $rows = [];
-    foreach ($periods as $p) {
-        $running += $p["billed"] - $p["paid"];
-        $p["balance"] = $running;
-        $rows[] = $p;
-    }
+    $od = $opening + $billedBefore - $paidBefore;
 
     return json_encode([
         "status" => "success",
         "client" => $client,
+        "month" => $month,
+        "year" => $year,
         "opening" => $opening,
-        "rows" => $rows,
+        "od" => $od,
+        "billed" => $billed,
+        "paid" => $paid,
+        "balance" => $od + $billed - $paid,
         "payments" => $payments,
-        "balance" => $running,
     ]);
 }
 
