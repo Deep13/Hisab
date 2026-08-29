@@ -10,6 +10,7 @@
 					<Title text="R&amp;D Enterprise"></Title>
 				</contentMiddle>
 				<contentRight>
+					<CheckBox id="idExcludeOd" text="Exclude OD" selected="{viewModel>/excludeOd}"/>
 					<Button text="Print Invoice" type="Accept" press="onPrintInvoice"/>
 				</contentRight>
 			</Bar>
@@ -193,15 +194,17 @@
 			<HBox justifyContent="End" width="100%" class="sapUiTinyMarginTop">
 				<Title level="H1" text="Grand Total: {viewModel>/total}"/>
 			</HBox>
-			<!-- Dues carried in from earlier months; hidden when there are none -->
-			<HBox visible="{viewModel>/hasOd}" justifyContent="End" width="100%">
+			<!-- Dues carried in from earlier months; hidden when there are none.
+			     "Exclude OD" in the header drops this whole settlement block so
+			     the invoice ends at the Grand Total. -->
+			<HBox visible="{= ${viewModel>/hasOd} &amp;&amp; !${viewModel>/excludeOd} }" justifyContent="End" width="100%">
 				<Title level="H1" text="{viewModel>/odLabel}: {viewModel>/odDisplay}"/>
 			</HBox>
 			<!-- Money received during this month; hidden when none came in -->
-			<HBox visible="{viewModel>/hasPaid}" justifyContent="End" width="100%">
+			<HBox visible="{= ${viewModel>/hasPaid} &amp;&amp; !${viewModel>/excludeOd} }" justifyContent="End" width="100%">
 				<Title level="H1" text="Payment Received: {viewModel>/paidDisplay}"/>
 			</HBox>
-			<HBox visible="{viewModel>/hasFinal}" justifyContent="End" width="100%">
+			<HBox visible="{= ${viewModel>/hasFinal} &amp;&amp; !${viewModel>/excludeOd} }" justifyContent="End" width="100%">
 				<Title level="H1" text="Total: {viewModel>/finalTotal}"/>
 			</HBox>
 			</VBox>

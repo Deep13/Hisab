@@ -13,6 +13,79 @@
   }
 }
 
+/*
+ * Printing just the invoice. The page is never rebuilt in JavaScript - the
+ * controller only adds these two classes, prints, and removes them again, so
+ * UI5 keeps every DOM node and event handler it started with.
+ *
+ * `visibility` rather than `display` because the print area has to keep its
+ * ancestors in the layout to stay on the page at all.
+ */
+@media print {
+  body.hisab-printing * {
+    visibility: hidden;
+  }
+  body.hisab-printing .hisab-print-area,
+  body.hisab-printing .hisab-print-area * {
+    visibility: visible;
+  }
+
+  /* App chrome is not part of the invoice, and hiding it by visibility alone
+     would leave its empty space at the top of the first page. */
+  body.hisab-printing .sapMPageHeader,
+  body.hisab-printing .sapMPageSubHeader,
+  body.hisab-printing .sapMPageFooter {
+    display: none !important;
+  }
+
+  /*
+   * UI5 nests the app in fixed-height scrolling containers, and an absolutely
+   * positioned print area does not paginate. Either one stops the print at the
+   * end of page one, so everything from the document down to the invoice has to
+   * be put back into normal flow and allowed to grow.
+   */
+  html,
+  body.hisab-printing,
+  body.hisab-printing .sapUiBody,
+  body.hisab-printing .sapMShell,
+  body.hisab-printing .sapMShellContent,
+  body.hisab-printing .sapMApp,
+  body.hisab-printing .sapMNav,
+  body.hisab-printing .sapMPage,
+  body.hisab-printing .sapMPageScroll,
+  body.hisab-printing .sapMPageEnableScrolling,
+  body.hisab-printing .sapUiScrollDelegate,
+  body.hisab-printing .myDivToPrint,
+  body.hisab-printing .hisab-print-area {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0;
+  }
+  /*
+   * UI5 titles sit in a fixed line box with overflow hidden, which shaves the
+   * top and bottom off tall glyphs once the print font metrics differ from the
+   * screen. Let them size to their own text instead.
+   */
+  body.hisab-printing .hisab-print-area .sapMTitle,
+  body.hisab-printing .hisab-print-area .sapMTitle * {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    line-height: 1.5;
+    height: auto;
+    max-height: none;
+  }
+  /* Flex rows sized from those titles have to grow with them */
+  body.hisab-printing .hisab-print-area .sapMFlexBox {
+    height: auto;
+    min-height: 0;
+  }
+}
+
 .border-top {
   border-top: 1px solid black;
 }

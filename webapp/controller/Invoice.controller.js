@@ -180,6 +180,9 @@ sap.ui.define(
             invoiceData.paid = 0;
             invoiceData.hasFinal = false;
             invoiceData.finalTotal = total;
+            // Toggled by the "Exclude OD" box in the header; starts off so a
+            // freshly opened invoice always shows the settlement figures.
+            invoiceData.excludeOd = false;
             var oViewModel = new JSONModel(invoiceData);
             that.getView().setModel(oViewModel, "viewModel");
 
@@ -261,27 +264,51 @@ sap.ui.define(
         });
       },
 
+      /**
+       * Prints just the invoice by flagging it in the DOM and letting the print
+       * stylesheet hide everything else.
+       *
+       * This used to swap document.body.innerHTML for the invoice, print, then
+       * swap the old markup back. Assigning innerHTML rebuilds every node from
+       * a string, so UI5 was left holding references to discarded elements and
+       * every event listener went with them - the page came back looking right
+       * but no button responded. Nothing is rebuilt here: two classes go on,
+       * the browser prints, and the classes come off.
+       */
       onPrintInvoice: function (oEvent) {
-        var oTarget = this.getView(),
-          sTargetId = "target";
-
-        if (sTargetId) {
-          oTarget = oTarget.byId(sTargetId);
-        }
-
-        if (oTarget) {
-          var $domTarget = oTarget.$()[0],
-            sTargetContent = $domTarget.innerHTML,
-            sOriginalContent = document.body.innerHTML;
-
-          document.body.innerHTML = sTargetContent;
-          window.print();
-          document.body.innerHTML = sOriginalContent;
-        } else {
+        var oTarget = this.byId("target");
+        var oDom = oTarget && oTarget.getDomRef();
+        if (!oDom) {
           jQuery.sap.log.error(
             'onPrint needs a valid target container [view|data:targetId="SID"]'
           );
+          return;
         }
+
+        var iFallback;
+        var bRestored = false;
+        var fnRestore = function () {
+          if (bRestored) {
+            return;
+          }
+          bRestored = true;
+          clearTimeout(iFallback);
+          window.removeEventListener("afterprint", fnRestore);
+          document.body.classList.remove("hisab-printing");
+          oDom.classList.remove("hisab-print-area");
+        };
+
+        document.body.classList.add("hisab-printing");
+        oDom.classList.add("hisab-print-area");
+
+        // Restoring too early would print the whole page, so this waits for
+        // afterprint rather than for print() to return - print() comes straight
+        // back in some browsers instead of blocking until the dialog closes.
+        // The classes only apply inside @media print, so a late restore costs
+        // nothing on screen; the timer just stops them lingering for good.
+        window.addEventListener("afterprint", fnRestore);
+        iFallback = setTimeout(fnRestore, 60000);
+        window.print();
       },
       onpressBack: function (oEvent) {
         this.oRouter.navTo("ClientPayment");
