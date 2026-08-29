@@ -41,11 +41,20 @@
 			</HBox>
 			
 			
-			<VBox visible="{path:'viewModel>/Shaving',formatter:'.checkLength'}">
+			<!-- One block per factory. An "All factories" preview repeats this for
+			     each factory with its own subtotal; a single factory renders once
+			     with the heading and subtotal suppressed. -->
+			<VBox items="{viewModel>/factories}">
+			<VBox class="sapUiSmallMarginBottom">
+			<HBox visible="{viewModel>showHeader}" alignItems="Center" justifyContent="Center" width="100%">
+			<Title level="H2" titleStyle="H3" text="{viewModel>cc}"/>
+			</HBox>
+
+			<VBox visible="{path:'viewModel>Shaving',formatter:'.checkLength'}">
 			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiSmallMargin" width="70%">
 			<Title level="H1" titleStyle="H4" text="Shaving"/>
 			</VBox>
-			<VBox  items="{viewModel>/Shaving}">
+			<VBox  items="{viewModel>Shaving}">
 			<HBox class="higlight" >
 			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
 			<Title level="H1" titleStyle="H4" text="{viewModel>desc}"/>
@@ -60,18 +69,18 @@
 			<!-- <Title level="H1" titleStyle="H4" text="{viewModel>desc}"/> -->
 			</VBox>
 			<VBox alignItems="Center" alignContent="Center"  justifyContent="Center" width="30%">
-					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>/ShavingTotal}"/>
+					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>ShavingTotal}"/>
 			</VBox>
 			</HBox>
 			</VBox>
 
 
 
-<VBox visible="{path:'viewModel>/Buffing',formatter:'.checkLength'}">
+<VBox visible="{path:'viewModel>Buffing',formatter:'.checkLength'}">
 			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiSmallMargin" width="70%">
 			<Title level="H1" titleStyle="H4" text="Buffing"/>
 			</VBox>
-			<VBox items="{viewModel>/Buffing}">
+			<VBox items="{viewModel>Buffing}">
 			<HBox class="higlight">
 			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
 			<Title level="H1" titleStyle="H4" text="{viewModel>desc}"/>
@@ -87,22 +96,22 @@
 			<!-- <Title level="H1" titleStyle="H4" text="{viewModel>desc}"/> -->
 			</VBox>
 			<VBox alignItems="Center" alignContent="Center"  justifyContent="Center" width="30%">
-					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>/BuffingTotal}"/>
+					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>BuffingTotal}"/>
 			</VBox>
 </HBox >
 
 </VBox>
 
 
-<VBox visible="{path:'viewModel>/Milling',formatter:'.checkLength'}">
+<VBox visible="{path:'viewModel>Milling',formatter:'.checkLength'}">
 			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiSmallMargin" width="70%">
 			<Title level="H1" titleStyle="H4" text="Milling"/>
 			</VBox>
-			<VBox items="{viewModel>/Milling}">
+			<VBox items="{viewModel>Milling}">
 			<HBox class="higlight" >
 			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
 			<Title level="H1" titleStyle="H4" text="{viewModel>desc}"/>
-			<Title level="H1" titleStyle="H4" text="{viewModel>/MillingLot} Lot"/>
+			<Title level="H1" titleStyle="H4" text="{viewModel>MillingLot} Lot"/>
 			</VBox>
 			<VBox alignItems="Center" alignContent="Center" justifyContent="Center" width="30%">
 					<Title level="H1" titleStyle="H4" text="{viewModel>total}"/>
@@ -114,17 +123,17 @@
 			<!-- <Title level="H1" titleStyle="H4" text="{viewModel>desc}"/> -->
 			</VBox>
 			<VBox alignItems="Center" alignContent="Center"  justifyContent="Center" width="30%">
-					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>/MillingTotal}"/>
+					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>MillingTotal}"/>
 			</VBox>
 </HBox >
 
 </VBox>
 
-<VBox visible="{path:'viewModel>/Softening',formatter:'.checkLength'}">
+<VBox visible="{path:'viewModel>Softening',formatter:'.checkLength'}">
 			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiSmallMargin" width="70%">
 			<Title level="H1" titleStyle="H4" text="Charbi"/>
 			</VBox>
-			<VBox class="softening" items="{viewModel>/Softening}">
+			<VBox class="softening" items="{viewModel>Softening}">
 			<HBox class="higlight">
 			<HBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
 			<Title class="sapUiSmallMarginEnd" level="H1" titleStyle="H4" text="{viewModel>date} "/>
@@ -140,18 +149,18 @@
 			<!-- <Title level="H1" titleStyle="H4" text="{viewModel>desc}"/> -->
 			</VBox>
 			<VBox alignItems="Center" alignContent="Center"  justifyContent="Center" width="30%">
-					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>/SofteningTotal}"/>
+					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>SofteningTotal}"/>
 			</VBox>
 </HBox >
 
 </VBox>
 
-<VBox visible="{path:'viewModel>/Tangan',formatter:'.checkLength'}">
+<VBox visible="{path:'viewModel>Tangan',formatter:'.checkLength'}">
 
 			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiSmallMargin" width="70%">
 			<Title level="H1" titleStyle="H4" text="Tangan"/>
 			</VBox>
-			<VBox items="{viewModel>/Tangan}">
+			<VBox items="{viewModel>Tangan}">
 			<HBox class="higlight">
 			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
 			<Title level="H1" titleStyle="H4" text="{viewModel>desc}"/>
@@ -167,23 +176,34 @@
 			<!-- <Title level="H1" titleStyle="H4" text="{viewModel>desc}"/> -->
 			</VBox>
 			<VBox alignItems="Center" alignContent="Center"  justifyContent="Center" width="30%">
-					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>/TanganTotal}"/>
+					<Title level="H1" titleStyle="H4" class="border-top" text="{viewModel>TanganTotal}"/>
 			</VBox>
 </HBox >
 </VBox>
-			<OverflowToolbar>
-				<ToolbarSpacer/>
+
+			<!-- This factory's own total; only meaningful when more than one is shown.
+			     Plain HBoxes, not toolbars, so no separator rules appear between
+			     the totals. -->
+			<HBox visible="{viewModel>showHeader}" justifyContent="End" width="100%" class="sapUiTinyMarginTop">
+				<Title level="H1" titleStyle="H3" text="Total: {viewModel>total}"/>
+			</HBox>
+			</VBox>
+			</VBox>
+
+			<HBox justifyContent="End" width="100%" class="sapUiTinyMarginTop">
 				<Title level="H1" text="Grand Total: {viewModel>/total}"/>
-			</OverflowToolbar>
+			</HBox>
 			<!-- Dues carried in from earlier months; hidden when there are none -->
-			<OverflowToolbar visible="{viewModel>/hasOd}">
-				<ToolbarSpacer/>
+			<HBox visible="{viewModel>/hasOd}" justifyContent="End" width="100%">
 				<Title level="H1" text="{viewModel>/odLabel}: {viewModel>/odDisplay}"/>
-			</OverflowToolbar>
-			<OverflowToolbar visible="{viewModel>/hasOd}">
-				<ToolbarSpacer/>
+			</HBox>
+			<!-- Money received during this month; hidden when none came in -->
+			<HBox visible="{viewModel>/hasPaid}" justifyContent="End" width="100%">
+				<Title level="H1" text="Payment Received: {viewModel>/paidDisplay}"/>
+			</HBox>
+			<HBox visible="{viewModel>/hasFinal}" justifyContent="End" width="100%">
 				<Title level="H1" text="Total: {viewModel>/finalTotal}"/>
-			</OverflowToolbar>
+			</HBox>
 			</VBox>
 		</content>
 	</Page>

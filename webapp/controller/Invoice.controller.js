@@ -16,6 +16,90 @@ sap.ui.define(
           return false;
         }
       },
+      /**
+       * Rolls one factory's rows into the per-machine-type lines and subtotals
+       * the invoice prints. Pulled out of the route handler so an "All
+       * factories" preview can run it once per factory rather than merging
+       * every factory into one set of figures.
+       */
+      _buildFactoryBlock: function (aRows) {
+        var millingLot = 0;
+        var oBlock = {
+          Shaving: {},
+          Buffing: {},
+          Milling: {},
+          Softening: [],
+          Tangan: {},
+          ShavingTotal: 0,
+          BuffingTotal: 0,
+          SofteningTotal: 0,
+          MillingTotal: 0,
+          TanganTotal: 0,
+        };
+        var total = 0;
+
+        aRows.forEach(function (element) {
+          var sType = element.machineType;
+          if (sType === "Shaving" || sType === "Buffing" ||
+              sType === "Tangan" || sType === "Milling") {
+            if (sType === "Milling") {
+              millingLot++;
+            }
+            oBlock[sType][element.rate] =
+              (oBlock[sType][element.rate] || 0) + parseFloat(element.quantity);
+          } else if (sType === "Softening") {
+            oBlock.Softening.push(element);
+          }
+          total = total + parseFloat(element.total);
+        });
+        oBlock.MillingLot = millingLot;
+
+        var oLines = {
+          Shaving: [],
+          Buffing: [],
+          Milling: [],
+          Softening: [],
+          Tangan: [],
+        };
+        Object.keys(oLines).forEach(function (sType) {
+          if (sType !== "Softening") {
+            Object.keys(oBlock[sType]).forEach(function (sRate) {
+              oLines[sType].push({
+                desc: oBlock[sType][sRate] + " X " + sRate,
+                total: sRate * oBlock[sType][sRate],
+              });
+              oBlock[sType + "Total"] += sRate * oBlock[sType][sRate];
+            });
+          } else {
+            oBlock.Softening.forEach(function (values) {
+              var desc = "";
+              if (values.quantity > 3) {
+                desc =
+                  values.quantity +
+                  "hrs = 400 + " +
+                  (values.quantity - 3) * values.rate;
+              } else {
+                desc = values.quantity + "hrs = 400";
+              }
+              oLines.Softening.push({
+                date: values.date,
+                desc: desc,
+                total: values.total,
+              });
+              oBlock.SofteningTotal += parseFloat(values.total);
+            });
+          }
+        });
+
+        oBlock.Shaving = oLines.Shaving;
+        oBlock.Buffing = oLines.Buffing;
+        oBlock.Milling = oLines.Milling;
+        oBlock.Softening = oLines.Softening;
+        oBlock.Tangan = oLines.Tangan;
+        oBlock.total = total;
+        return oBlock;
+      },
+
       onInit: function () {
         this.oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         this.http = "http://";
@@ -25,7 +109,6 @@ sap.ui.define(
           .attachPatternMatched(this._handleRouteMatched, this);
       },
       _handleRouteMatched: function (oEvent) {
-        var millingLot = 0;
         var that = this;
         var dataView = oEvent.getParameter("arguments").clientData;
         var oData = JSON.parse(dataView);
@@ -57,112 +140,45 @@ sap.ui.define(
               cc: oData.officeType,
               month: months[oData.month - 1],
               year: oData.year,
-              Shaving: {},
-              Buffing: {},
-              Milling: {},
-              Softening: [],
-              Tangan: {},
-              ShavingTotal: 0,
-              BuffingTotal: 0,
-              SofteningTotal: 0,
-              MillingTotal: 0,
-			   TanganTotal: 0,
             };
+
+            // An "All factories" preview is split per factory so each one adds
+            // up on its own; a single-factory preview is just a list of one.
+            var mByFactory = {};
+            var aFactoryOrder = [];
+            (dataClient || []).forEach(function (element) {
+              var sCc = String(element.cc == null ? "" : element.cc).trim() || "Unassigned";
+              if (!mByFactory[sCc]) {
+                mByFactory[sCc] = [];
+                aFactoryOrder.push(sCc);
+              }
+              mByFactory[sCc].push(element);
+            });
+            aFactoryOrder.sort();
+
             var total = 0;
-            dataClient.forEach((element) => {
-              if (element.machineType == "Shaving") {
-                if (invoiceData.Shaving[element.rate]) {
-                  invoiceData.Shaving[element.rate] =
-                    invoiceData.Shaving[element.rate] +
-                    parseFloat(element.quantity);
-                } else {
-                  invoiceData.Shaving[element.rate] = parseFloat(
-                    element.quantity
-                  );
-                }
-              } else if (element.machineType == "Buffing") {
-                if (invoiceData.Buffing[element.rate]) {
-                  invoiceData.Buffing[element.rate] =
-                    invoiceData.Buffing[element.rate] +
-                    parseFloat(element.quantity);
-                } else {
-                  invoiceData.Buffing[element.rate] = parseFloat(
-                    element.quantity
-                  );
-                }
-              } else if (element.machineType == "Tangan") {
-                if (invoiceData.Tangan[element.rate]) {
-                  invoiceData.Tangan[element.rate] =
-                    invoiceData.Tangan[element.rate] +
-                    parseFloat(element.quantity);
-                } else {
-                  invoiceData.Tangan[element.rate] = parseFloat(
-                    element.quantity
-                  );
-                }
-              } else if (element.machineType == "Milling") {
-                millingLot++;
-                if (invoiceData.Milling[element.rate]) {
-                  invoiceData.Milling[element.rate] =
-                    invoiceData.Milling[element.rate] +
-                    parseFloat(element.quantity);
-                } else {
-                  invoiceData.Milling[element.rate] = parseFloat(
-                    element.quantity
-                  );
-                }
-              } else if (element.machineType == "Softening") {
-                invoiceData.Softening.push(element);
-              }
-              total = total + parseFloat(element.total);
-              invoiceData.MillingLot = millingLot;
+            var aFactories = aFactoryOrder.map(function (sCc) {
+              var oBlock = that._buildFactoryBlock(mByFactory[sCc]);
+              oBlock.cc = sCc;
+              total += oBlock.total;
+              return oBlock;
             });
-            var invoiceObjData = {
-              Shaving: [],
-              Buffing: [],
-              Milling: [],
-              Softening: [],
-			  Tangan: [],
-            };
-            Object.keys(invoiceObjData).forEach(function (val) {
-              if (val !== "Softening") {
-                Object.keys(invoiceData[val]).forEach(function (value) {
-                  invoiceObjData[val].push({
-                    desc: invoiceData[val][value] + " X " + value,
-                    total: value * invoiceData[val][value],
-                  });
-                  invoiceData[val + "Total"] += value * invoiceData[val][value];
-                });
-              } else {
-                invoiceData.Softening.forEach(function (values) {
-                  var desc = "";
-                  if (values.quantity > 3) {
-                    desc =
-                      values.quantity +
-                      "hrs = 400 + " +
-                      (values.quantity - 3) * values.rate;
-                  } else {
-                    desc = values.quantity + "hrs = 400";
-                  }
-                  invoiceObjData.Softening.push({
-                    date: values.date,
-                    desc: desc,
-                    total: values.total,
-                  });
-                  invoiceData.SofteningTotal += parseFloat(values.total);
-                });
-              }
+            // With a single factory its subtotal would just repeat the grand
+            // total, so the per-factory heading and subtotal are left off.
+            var bMulti = aFactories.length > 1;
+            aFactories.forEach(function (oBlock) {
+              oBlock.showHeader = bMulti;
             });
-            invoiceData.Shaving = invoiceObjData.Shaving;
-            invoiceData.Buffing = invoiceObjData.Buffing;
-            invoiceData.Milling = invoiceObjData.Milling;
-            invoiceData.Softening = invoiceObjData.Softening;
-			invoiceData.Tangan = invoiceObjData.Tangan;
-            
+
+            invoiceData.factories = aFactories;
+            invoiceData.multiFactory = bMulti;
             invoiceData.total = total;
             invoiceData.notices = [];
             invoiceData.hasOd = false;
             invoiceData.od = 0;
+            invoiceData.hasPaid = false;
+            invoiceData.paid = 0;
+            invoiceData.hasFinal = false;
             invoiceData.finalTotal = total;
             var oViewModel = new JSONModel(invoiceData);
             that.getView().setModel(oViewModel, "viewModel");
@@ -190,15 +206,33 @@ sap.ui.define(
                   var match = (res.rows || []).filter(function (r) {
                     return r.client.trim().toLowerCase() === name;
                   })[0];
-                  if (!match || !match.od) {
+                  if (!match) {
                     return;
                   }
-                  oViewModel.setProperty("/od", match.od);
-                  oViewModel.setProperty("/odLabel", match.od < 0 ? "Adv" : "OD");
-                  oViewModel.setProperty("/odDisplay",
-                    match.od < 0 ? "- " + Math.abs(match.od) : match.od);
-                  oViewModel.setProperty("/hasOd", true);
-                  oViewModel.setProperty("/finalTotal", total + match.od);
+
+                  // OD is what was owed coming into the month; paid is what
+                  // came in during it. Either one alone is worth showing, so
+                  // they are tested separately.
+                  var od = parseFloat(match.od) || 0;
+                  var paid = parseFloat(match.paid) || 0;
+                  if (!od && !paid) {
+                    return;
+                  }
+
+                  if (od) {
+                    oViewModel.setProperty("/od", od);
+                    oViewModel.setProperty("/odLabel", od < 0 ? "Adv" : "OD");
+                    oViewModel.setProperty("/odDisplay",
+                      od < 0 ? "- " + Math.abs(od) : od);
+                    oViewModel.setProperty("/hasOd", true);
+                  }
+                  if (paid) {
+                    oViewModel.setProperty("/paid", paid);
+                    oViewModel.setProperty("/paidDisplay", "- " + Math.abs(paid));
+                    oViewModel.setProperty("/hasPaid", true);
+                  }
+                  oViewModel.setProperty("/finalTotal", total + od - paid);
+                  oViewModel.setProperty("/hasFinal", true);
                 }
               });
             }
