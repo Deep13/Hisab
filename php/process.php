@@ -55,6 +55,7 @@ $allowedMethods = [
     'saveClientOpenings',
     'getClientBalances',
     'getClientLedger',
+    'getTagadaSlip',
     'getKhataMonthlySummary',
     'getElectricityMeters',
     'saveElectricityMeter',
@@ -1449,7 +1450,6 @@ function clientOpeningCutoff($conn) {
  * Thokai is left out of `billed` because it is left out of the invoice too.
  */
 function getClientBalances() {
-    $conn = getDbConnection();
     $obj = getPostData();
     $month = (int)($obj->month ?? 0);
     $year = (int)($obj->year ?? 0);
@@ -1457,6 +1457,21 @@ function getClientBalances() {
     if ($month < 1 || $month > 12 || $year < 2000) {
         return json_encode(["status" => "failed", "error" => "Valid month and year are required"]);
     }
+
+    return json_encode([
+        "status" => "success",
+        "month" => $month,
+        "year" => $year,
+        "rows" => clientBalanceRows(getDbConnection(), $month, $year),
+    ]);
+}
+
+/**
+ * The rows behind getClientBalances(), taking the period as arguments so the
+ * Tagada Slip can reuse the exact same OD and payment figures instead of
+ * working them out a second way.
+ */
+function clientBalanceRows($conn, $month, $year) {
     $selected = $year * 100 + $month;
 
     $openings = clientOpeningMap($conn);
@@ -1555,7 +1570,74 @@ function getClientBalances() {
         return strcasecmp($a["client"], $b["client"]);
     });
 
-    return json_encode(["status" => "success", "month" => $month, "year" => $year, "rows" => $rows]);
+    return $rows;
+}
+
+/**
+ * Everything the Tagada Slip needs for a month, in one round trip.
+ *
+ * Returns the month's billing split by client and factory, alongside each
+ * client's OD and the money received during the month. OD and payments are
+ * held per client and cannot be traced to a factory, so they come back once
+ * per client and the caller decides where to show them.
+ *
+ * The slip previously made one request per client on top of a client list,
+ * which meant dozens of round trips to draw a single month.
+ *
+ * Thokai is excluded so the slip agrees with the invoice and the ledger.
+ */
+function getTagadaSlip() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $month = (int)($obj->month ?? 0);
+    $year = (int)($obj->year ?? 0);
+
+    if ($month < 1 || $month > 12 || $year < 2000) {
+        return json_encode(["status" => "failed", "error" => "Valid month and year are required"]);
+    }
+    $sMonth = sprintf("%02d", $month);
+    $sYear = (string)$year;
+
+    $billing = [];
+    $stmt = $conn->prepare(
+        "SELECT client, cc, COALESCE(SUM(total), 0) AS current
+         FROM transaction
+         WHERE month = ? AND year = ? AND machineType <> 'Thokai'
+           AND client IS NOT NULL AND client <> '' AND cc <> ''
+         GROUP BY client, cc
+         ORDER BY client ASC, cc ASC"
+    );
+    $stmt->bind_param("ss", $sMonth, $sYear);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $billing[] = [
+            "client" => trim($row["client"]),
+            "cc" => trim($row["cc"]),
+            "current" => (float)$row["current"],
+        ];
+    }
+
+    // Same figures the Client Ledger shows, so the two can never disagree.
+    $balances = [];
+    foreach (clientBalanceRows($conn, $month, $year) as $row) {
+        if ($row["od"] == 0.0 && $row["paid"] == 0.0) {
+            continue;
+        }
+        $balances[] = [
+            "client" => $row["client"],
+            "od" => $row["od"],
+            "paid" => $row["paid"],
+        ];
+    }
+
+    return json_encode([
+        "status" => "success",
+        "month" => $month,
+        "year" => $year,
+        "billing" => $billing,
+        "balances" => $balances,
+    ]);
 }
 
 /**

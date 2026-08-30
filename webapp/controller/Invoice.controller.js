@@ -16,90 +16,6 @@ sap.ui.define(
           return false;
         }
       },
-      /**
-       * Rolls one factory's rows into the per-machine-type lines and subtotals
-       * the invoice prints. Pulled out of the route handler so an "All
-       * factories" preview can run it once per factory rather than merging
-       * every factory into one set of figures.
-       */
-      _buildFactoryBlock: function (aRows) {
-        var millingLot = 0;
-        var oBlock = {
-          Shaving: {},
-          Buffing: {},
-          Milling: {},
-          Softening: [],
-          Tangan: {},
-          ShavingTotal: 0,
-          BuffingTotal: 0,
-          SofteningTotal: 0,
-          MillingTotal: 0,
-          TanganTotal: 0,
-        };
-        var total = 0;
-
-        aRows.forEach(function (element) {
-          var sType = element.machineType;
-          if (sType === "Shaving" || sType === "Buffing" ||
-              sType === "Tangan" || sType === "Milling") {
-            if (sType === "Milling") {
-              millingLot++;
-            }
-            oBlock[sType][element.rate] =
-              (oBlock[sType][element.rate] || 0) + parseFloat(element.quantity);
-          } else if (sType === "Softening") {
-            oBlock.Softening.push(element);
-          }
-          total = total + parseFloat(element.total);
-        });
-        oBlock.MillingLot = millingLot;
-
-        var oLines = {
-          Shaving: [],
-          Buffing: [],
-          Milling: [],
-          Softening: [],
-          Tangan: [],
-        };
-        Object.keys(oLines).forEach(function (sType) {
-          if (sType !== "Softening") {
-            Object.keys(oBlock[sType]).forEach(function (sRate) {
-              oLines[sType].push({
-                desc: oBlock[sType][sRate] + " X " + sRate,
-                total: sRate * oBlock[sType][sRate],
-              });
-              oBlock[sType + "Total"] += sRate * oBlock[sType][sRate];
-            });
-          } else {
-            oBlock.Softening.forEach(function (values) {
-              var desc = "";
-              if (values.quantity > 3) {
-                desc =
-                  values.quantity +
-                  "hrs = 400 + " +
-                  (values.quantity - 3) * values.rate;
-              } else {
-                desc = values.quantity + "hrs = 400";
-              }
-              oLines.Softening.push({
-                date: values.date,
-                desc: desc,
-                total: values.total,
-              });
-              oBlock.SofteningTotal += parseFloat(values.total);
-            });
-          }
-        });
-
-        oBlock.Shaving = oLines.Shaving;
-        oBlock.Buffing = oLines.Buffing;
-        oBlock.Milling = oLines.Milling;
-        oBlock.Softening = oLines.Softening;
-        oBlock.Tangan = oLines.Tangan;
-        oBlock.total = total;
-        return oBlock;
-      },
-
       onInit: function () {
         this.oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         this.http = "http://";
@@ -143,35 +59,13 @@ sap.ui.define(
             };
 
             // An "All factories" preview is split per factory so each one adds
-            // up on its own; a single-factory preview is just a list of one.
-            var mByFactory = {};
-            var aFactoryOrder = [];
-            (dataClient || []).forEach(function (element) {
-              var sCc = String(element.cc == null ? "" : element.cc).trim() || "Unassigned";
-              if (!mByFactory[sCc]) {
-                mByFactory[sCc] = [];
-                aFactoryOrder.push(sCc);
-              }
-              mByFactory[sCc].push(element);
-            });
-            aFactoryOrder.sort();
+            // up on its own; a single-factory preview is just a list of one,
+            // with its heading and subtotal suppressed.
+            var oGrouped = that.groupInvoiceByFactory(dataClient);
+            var total = oGrouped.total;
 
-            var total = 0;
-            var aFactories = aFactoryOrder.map(function (sCc) {
-              var oBlock = that._buildFactoryBlock(mByFactory[sCc]);
-              oBlock.cc = sCc;
-              total += oBlock.total;
-              return oBlock;
-            });
-            // With a single factory its subtotal would just repeat the grand
-            // total, so the per-factory heading and subtotal are left off.
-            var bMulti = aFactories.length > 1;
-            aFactories.forEach(function (oBlock) {
-              oBlock.showHeader = bMulti;
-            });
-
-            invoiceData.factories = aFactories;
-            invoiceData.multiFactory = bMulti;
+            invoiceData.factories = oGrouped.factories;
+            invoiceData.multiFactory = oGrouped.multiFactory;
             invoiceData.total = total;
             invoiceData.notices = [];
             invoiceData.hasOd = false;

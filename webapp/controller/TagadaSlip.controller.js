@@ -6,14 +6,30 @@ sap.ui.define(
     "sap/m/MessageToast",
     "sap/m/BusyDialog",
     "sap/ui/core/Fragment",
+    "sap/ui/model/Sorter",
   ],
-  function (Controller, JSONModel, MessageBox, MessageToast, BusyDialog, Fragment) {
+  function (Controller, JSONModel, MessageBox, MessageToast, BusyDialog, Fragment, Sorter) {
     "use strict";
 
     var MONTHS = [
       "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
       "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
     ];
+
+    // Parties billed at more than one factory are consolidated under this
+    // heading; everyone else sits under the single factory they worked at.
+    var ALL_GROUP = "All";
+
+    // Old dues are kept in data/<factory>.csv, one file per factory.
+    var FACTORIES = ["Factory 01", "Factory 02", "Factory 03", "Factory 04"];
+
+    // Rows typed in by hand belong to no factory, so they sort last.
+    var OTHER_GROUP = "Other";
+    var OTHER_ORDER = 99;
+
+    function money(n) {
+      return parseFloat(n) || 0;
+    }
 
     return Controller.extend("Hisab.Hisab.controller.TagadaSlip", {
       onInit: function () {
@@ -53,24 +69,21 @@ sap.ui.define(
 
       onLoadData: function () {
         var that = this;
-        var office = this.byId("idOffice").getSelectedKey();
         var month = this.byId("idMonth").getSelectedKey();
         var year = this.byId("idYear").getSelectedKey();
 
-        if (!office || !month || !year) {
+        if (!month || !year) {
           return;
         }
 
-        // Show loader
+        // One round trip for the whole month. This used to fetch a client list
+        // and then a separate request per client, so a month took dozens.
         sap.ui.core.BusyIndicator.show(0);
-
-        // Dues carried in from earlier months, so OD does not have to be typed.
-        // A failed load leaves OD at 0 rather than blocking the slip.
         $.ajax({
           url: that.uri,
           type: "POST",
           data: {
-            method: "getClientBalances",
+            method: "getTagadaSlip",
             data: JSON.stringify({
               month: parseInt(month, 10),
               year: parseInt(year, 10)
@@ -78,169 +91,200 @@ sap.ui.define(
           },
           dataType: "json",
           success: function (res) {
-            that._odByClient = {};
-            if (res && res.status === "success") {
-              (res.rows || []).forEach(function (r) {
-                that._odByClient[r.client.trim().toLowerCase()] = r.od;
-              });
+            sap.ui.core.BusyIndicator.hide();
+            if (!res || res.status !== "success") {
+              MessageBox.error((res && res.error) || "Could not load the slip");
+              that._setTableData([]);
+              return;
             }
+            that._setTableData(that._buildRows(res));
           },
-          error: function () {
-            that._odByClient = {};
-          },
-          complete: function () {
-            // Get all clients for this office/month/year
-            $.ajax({
-              url: that.uri,
-              type: "POST",
-              data: {
-                method: "getAllClientsWithParam",
-                data: JSON.stringify({
-                  month: month,
-                  year: year,
-                  machineType: "All",
-                  officeType: office
-                })
-              },
-              dataType: "json",
-              success: function (clients) {
-                if (!clients || clients.length === 0) {
-                  sap.ui.core.BusyIndicator.hide();
-                  that._setTableData([]);
-                  return;
-                }
-                // For each client, get their total
-                var clientNames = clients.map(function (c) { return c.client; });
-                that._fetchClientTotals(clientNames, month, year, office);
-              },
-              error: function () {
-                sap.ui.core.BusyIndicator.hide();
-                that._setTableData([]);
-              }
-            });
+          error: function (request) {
+            sap.ui.core.BusyIndicator.hide();
+            MessageBox.error("Could not load the slip: " + request.responseText);
+            that._setTableData([]);
           }
         });
       },
 
-      // Auto-detected dues for a party, still editable in the table afterwards.
-      _lookupOd: function (clientName) {
-        var map = this._odByClient || {};
-        var od = map[String(clientName || "").trim().toLowerCase()];
-        return parseFloat(od) || 0;
-      },
+      /**
+       * Turns a month's billing into slip rows.
+       *
+       * A party billed at more than one factory is consolidated into a single
+       * "All" row at the top; everyone else sits under the one factory they
+       * worked at. Every party therefore appears exactly once, which is what
+       * lets OD and payments - held per client, never per factory - be shown
+       * on the row without being counted twice.
+       */
+      _buildRows: function (res) {
+        var mBalance = {};
+        (res.balances || []).forEach(function (b) {
+          mBalance[String(b.client).trim().toLowerCase()] = b;
+        });
 
-      _fetchClientTotals: function (clientNames, month, year, office) {
-        var that = this;
-        var completed = 0;
-        var rows = [];
+        var mClients = {};
+        var mFactories = {};
+        (res.billing || []).forEach(function (b) {
+          var sKey = String(b.client).trim().toLowerCase();
+          if (!mClients[sKey]) {
+            mClients[sKey] = { partyName: b.client, offices: {}, current: 0 };
+          }
+          mClients[sKey].offices[b.cc] = (mClients[sKey].offices[b.cc] || 0) + money(b.current);
+          mClients[sKey].current += money(b.current);
+          mFactories[b.cc] = true;
+        });
 
-        clientNames.forEach(function (clientName) {
-          $.ajax({
-            url: that.uri,
-            type: "POST",
-            data: {
-              method: "getClientTransaction",
-              data: JSON.stringify({
-                Client: clientName,
-                month: month,
-                year: year,
-                machineType: "All",
-                officeType: office
-              })
-            },
-            dataType: "json",
-            success: function (transactions) {
-              var current = 0;
-              if (transactions && transactions.length > 0) {
-                transactions.forEach(function (t) {
-                  current += parseFloat(t.total) || 0;
-                });
-              }
-              var od = that._lookupOd(clientName);
-              rows.push({
-                partyName: clientName,
-                current: current,
-                od: od,
-                total: current + od
-              });
-              completed++;
-              if (completed === clientNames.length) {
-                sap.ui.core.BusyIndicator.hide();
-                that._setTableData(rows);
-              }
-            },
-            error: function () {
-              var odFallback = that._lookupOd(clientName);
-              rows.push({
-                partyName: clientName,
-                current: 0,
-                od: odFallback,
-                total: odFallback
-              });
-              completed++;
-              if (completed === clientNames.length) {
-                sap.ui.core.BusyIndicator.hide();
-                that._setTableData(rows);
-              }
-            }
+        var aFactories = Object.keys(mFactories).sort();
+        var aRows = [];
+        Object.keys(mClients).forEach(function (sKey) {
+          var oClient = mClients[sKey];
+          var aOffices = Object.keys(oClient.offices).sort();
+          var bMulti = aOffices.length > 1;
+          var oBal = mBalance[sKey] || {};
+          var od = money(oBal.od);
+          var paid = money(oBal.paid);
+
+          aRows.push({
+            partyName: oClient.partyName,
+            offices: oClient.offices,
+            current: oClient.current,
+            od: od,
+            paid: paid,
+            total: oClient.current + od - paid,
+            group: bMulti ? ALL_GROUP : aOffices[0],
+            groupOrder: bMulti ? 0 : 1 + aFactories.indexOf(aOffices[0])
           });
         });
+        return aRows;
       },
 
       _setTableData: function (rows) {
-        // Sort by party name
+        this._prepareRows(rows);
+
+        var oModel = this.getView().getModel("tagadaModel");
+        if (!oModel) {
+          oModel = new JSONModel({ rows: [] });
+          oModel.setSizeLimit(1000);
+          this.getView().setModel(oModel, "tagadaModel");
+        }
+        oModel.setProperty("/rows", rows);
+        this._applyGrouping();
+        this._updateGrandTotal();
+      },
+
+      /**
+       * Orders the rows and hands out serial numbers.
+       *
+       * The sort key is precomputed and the table is sorted on that same key,
+       * so what the SL numbers were handed out against is exactly what ends up
+       * on screen. SL restarts in each section, so a factory's printed slip
+       * reads 1, 2, 3 rather than carrying on from the section above.
+       */
+      _prepareRows: function (rows) {
+        rows.forEach(function (r) {
+          r.group = r.group || OTHER_GROUP;
+          if (typeof r.groupOrder !== "number") {
+            r.groupOrder = OTHER_ORDER;
+          }
+          r.sortKey = ("00" + r.groupOrder).slice(-3) + "|" +
+            String(r.partyName || "").toLowerCase();
+        });
         rows.sort(function (a, b) {
-          return a.partyName.localeCompare(b.partyName);
+          if (a.sortKey === b.sortKey) { return 0; }
+          return a.sortKey < b.sortKey ? -1 : 1;
         });
 
-        // Assign serial numbers
-        for (var i = 0; i < rows.length; i++) {
-          rows[i].sl = i + 1;
-        }
+        var sGroup = null;
+        var iSl = 0;
+        rows.forEach(function (r) {
+          if (r.group !== sGroup) {
+            sGroup = r.group;
+            iSl = 0;
+          }
+          r.sl = ++iSl;
+        });
+      },
 
-        var oModel = new JSONModel({ rows: rows });
-        oModel.setSizeLimit(500);
-        this.getView().setModel(oModel, "tagadaModel");
-        this._updateGrandTotal();
+      _applyGrouping: function () {
+        var oBinding = this.byId("idTable").getBinding("items");
+        if (!oBinding) {
+          return;
+        }
+        oBinding.sort(new Sorter("sortKey", false, function (oCtx) {
+          var sGroup = oCtx.getProperty("group") || OTHER_GROUP;
+          return { key: sGroup, text: sGroup };
+        }));
+      },
+
+      /** Sections in display order, used by both print paths and the export. */
+      _groupedRows: function () {
+        var oModel = this.getView().getModel("tagadaModel");
+        if (!oModel) {
+          return [];
+        }
+        var aGroups = [];
+        var mByName = {};
+        (oModel.getProperty("/rows") || []).forEach(function (r) {
+          if (!r.partyName) {
+            return;
+          }
+          var sGroup = r.group || OTHER_GROUP;
+          if (!mByName[sGroup]) {
+            mByName[sGroup] = { name: sGroup, order: r.groupOrder, rows: [] };
+            aGroups.push(mByName[sGroup]);
+          }
+          mByName[sGroup].rows.push(r);
+        });
+        aGroups.sort(function (a, b) { return a.order - b.order; });
+        return aGroups;
       },
 
       onOdChange: function (oEvent) {
         var oCtx = oEvent.getSource().getBindingContext("tagadaModel");
         var path = oCtx.getPath();
         var oModel = oCtx.getModel();
-        var current = parseFloat(oModel.getProperty(path + "/current")) || 0;
-        var od = parseFloat(oEvent.getParameter("value")) || 0;
+        var current = money(oModel.getProperty(path + "/current"));
+        var paid = money(oModel.getProperty(path + "/paid"));
+        var od = money(oEvent.getParameter("value"));
         oModel.setProperty(path + "/od", od);
-        oModel.setProperty(path + "/total", current + od);
+        oModel.setProperty(path + "/total", current + od - paid);
         this._updateGrandTotal();
       },
 
       onAddRow: function () {
         var oModel = this.getView().getModel("tagadaModel");
-        var rows = oModel.getProperty("/rows");
+        if (!oModel) {
+          oModel = new JSONModel({ rows: [] });
+          oModel.setSizeLimit(1000);
+          this.getView().setModel(oModel, "tagadaModel");
+        }
+        var rows = oModel.getProperty("/rows") || [];
         rows.push({
-          sl: rows.length + 1,
+          sl: 0,
           partyName: "",
           current: 0,
           od: 0,
-          total: 0
+          paid: 0,
+          total: 0,
+          group: OTHER_GROUP,
+          groupOrder: OTHER_ORDER
         });
-        oModel.setProperty("/rows", rows);
+        this._setTableData(rows);
       },
 
       onDeleteRow: function (oEvent) {
         var oCtx = oEvent.getSource().getBindingContext("tagadaModel");
-        var path = oCtx.getPath();
-        var index = parseInt(path.split("/").pop(), 10);
         var oModel = oCtx.getModel();
-        var rows = oModel.getProperty("/rows");
-        rows.splice(index, 1);
-        // Renumber serial numbers
-        for (var i = 0; i < rows.length; i++) {
-          rows[i].sl = i + 1;
+        var oRow = oCtx.getObject();
+        var rows = oModel.getProperty("/rows") || [];
+        // The table is sorted, so the binding path index is not the array
+        // index - find the row itself rather than trusting the path.
+        var iIndex = rows.indexOf(oRow);
+        if (iIndex === -1) {
+          return;
         }
-        oModel.setProperty("/rows", rows);
-        this._updateGrandTotal();
+        rows.splice(iIndex, 1);
+        this._setTableData(rows);
       },
 
       _updateGrandTotal: function () {
@@ -256,37 +300,53 @@ sap.ui.define(
 
       // ==================== OLD DATA (CSV) ====================
 
-      // Old dues live in data/<office>.csv and are maintained by hand, so they
+      // Old dues live in data/<factory>.csv and are maintained by hand, so they
       // are pulled in on demand rather than loaded with the month's figures.
+      // With the office picker gone every factory's file is read at once; a
+      // factory with no file is simply skipped.
       onFetchOldData: function () {
         var that = this;
-        var office = this.byId("idOffice").getSelectedKey();
-
-        if (!office) {
-          return;
-        }
+        var iPending = FACTORIES.length;
+        var aRows = [];
+        var aMissing = [];
 
         sap.ui.core.BusyIndicator.show(0);
-        $.ajax({
-          url: this.uri,
-          type: "POST",
-          data: {
-            method: "getOldData",
-            data: JSON.stringify({ office: office })
-          },
-          dataType: "json",
-          success: function (res) {
-            sap.ui.core.BusyIndicator.hide();
-            if (!res || res.status !== "success") {
-              MessageBox.error((res && res.error) || "Could not load the old data file");
-              return;
+        FACTORIES.forEach(function (sOffice) {
+          $.ajax({
+            url: that.uri,
+            type: "POST",
+            data: {
+              method: "getOldData",
+              data: JSON.stringify({ office: sOffice })
+            },
+            dataType: "json",
+            success: function (res) {
+              if (res && res.status === "success") {
+                (res.rows || []).forEach(function (r) {
+                  aRows.push(r);
+                });
+              } else {
+                aMissing.push(sOffice);
+              }
+            },
+            error: function () {
+              aMissing.push(sOffice);
+            },
+            complete: function () {
+              iPending--;
+              if (iPending > 0) {
+                return;
+              }
+              sap.ui.core.BusyIndicator.hide();
+              if (aRows.length === 0) {
+                MessageBox.information(
+                  "No old data found. Checked: " + FACTORIES.join(", ")
+                );
+                return;
+              }
+              that._mergeOldData(aRows, "all factories");
             }
-            that._mergeOldData(res.rows || [], office);
-          },
-          error: function (request) {
-            sap.ui.core.BusyIndicator.hide();
-            MessageBox.error("Could not load the old data file: " + request.responseText);
-          }
+          });
         });
       },
 
@@ -298,14 +358,14 @@ sap.ui.define(
        */
       _mergeOldData: function (oldRows, office) {
         if (oldRows.length === 0) {
-          MessageBox.information("data/" + office + ".csv has no rows yet");
+          MessageBox.information("No old data rows found for " + office);
           return;
         }
 
         var oModel = this.getView().getModel("tagadaModel");
         if (!oModel) {
           oModel = new JSONModel({ rows: [] });
-          oModel.setSizeLimit(500);
+          oModel.setSizeLimit(1000);
           this.getView().setModel(oModel, "tagadaModel");
         }
         var rows = oModel.getProperty("/rows") || [];
@@ -328,9 +388,9 @@ sap.ui.define(
 
           if (indexByName[key] !== undefined) {
             var row = rows[indexByName[key]];
-            var previousOd = parseFloat(row.od) || 0;
+            var previousOd = money(row.od);
             row.od = od;
-            row.total = (parseFloat(row.current) || 0) + od;
+            row.total = money(row.current) + od - money(row.paid);
             updated.push({
               partyName: row.partyName,
               oldOd: previousOd,
@@ -338,25 +398,23 @@ sap.ui.define(
               total: row.total
             });
           } else {
-            var current = parseFloat(oldRow.current) || 0;
+            var current = money(oldRow.current);
             rows.push({
               sl: 0,
               partyName: oldRow.partyName,
               current: current,
               od: od,
-              total: current + od
+              paid: 0,
+              total: current + od,
+              group: OTHER_GROUP,
+              groupOrder: OTHER_ORDER
             });
             indexByName[key] = rows.length - 1;
             added++;
           }
         });
 
-        for (var i = 0; i < rows.length; i++) {
-          rows[i].sl = i + 1;
-        }
-
-        oModel.setProperty("/rows", rows);
-        this._updateGrandTotal();
+        this._setTableData(rows);
 
         if (updated.length > 0) {
           this._showOldDataResult(updated, added, office);
@@ -406,16 +464,20 @@ sap.ui.define(
       // ==================== PRINT ====================
 
       onPrint: function () {
-        var oModel = this.getView().getModel("tagadaModel");
-        if (!oModel) { return; }
-        var rows = oModel.getProperty("/rows") || [];
-        var office = this.byId("idOffice").getSelectedKey();
+        var that = this;
+        var aGroups = this._groupedRows();
+        if (aGroups.length === 0) {
+          MessageBox.information("Nothing to print yet");
+          return;
+        }
         var month = this.byId("idMonth").getSelectedKey();
         var year = this.byId("idYear").getSelectedKey();
         var monthName = MONTHS[parseInt(month, 10) - 1];
 
         var grandTotal = 0;
-        rows.forEach(function (r) { grandTotal += parseFloat(r.total) || 0; });
+        aGroups.forEach(function (g) {
+          g.rows.forEach(function (r) { grandTotal += money(r.total); });
+        });
 
         var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Tagada Slip</title>';
         html += '<style>';
@@ -431,31 +493,52 @@ sap.ui.define(
         html += 'td.num { text-align: right; }';
         html += 'td.center { text-align: center; }';
         html += '.grand td { font-weight: bold; font-size: 14px; background: #f2f2f2; }';
+        html += '.section { page-break-after: always; }';
+        html += '.section:last-child { page-break-after: auto; }';
+        html += '.section h3 { font-size: 18px; margin-bottom: 10px; }';
         html += '</style></head><body>';
 
         html += '<div class="header">';
-        html += '<h1>' + office + '</h1>';
+        html += '<h1>Tagada Slip</h1>';
         html += '<h2>' + monthName + ' ' + year + '</h2>';
         html += '</div>';
 
-        html += '<table>';
-        html += '<tr><th style="width:50px">SL</th><th>Party Name</th><th class="num" style="width:120px">Current</th><th class="num" style="width:120px">OD</th><th class="num" style="width:120px">Total</th><th style="width:150px"></th></tr>';
+        // Consolidated parties come first, then one section per factory, each
+        // starting on its own page so a factory's sheet can be handed over.
+        aGroups.forEach(function (oGroup) {
+          var sectionTotal = 0;
+          html += '<div class="section">';
+          html += '<h3>' + that._escapeHtml(oGroup.name) + '</h3>';
+          html += '<table>';
+          html += '<tr><th style="width:50px">SL</th><th>Party Name</th>'
+            + '<th class="num" style="width:110px">Current</th>'
+            + '<th class="num" style="width:110px">OD</th>'
+            + '<th class="num" style="width:110px">Paid</th>'
+            + '<th class="num" style="width:110px">Due</th>'
+            + '<th style="width:140px"></th></tr>';
 
-        rows.forEach(function (r) {
-          if (r.partyName) {
+          oGroup.rows.forEach(function (r) {
+            sectionTotal += money(r.total);
             html += '<tr>';
             html += '<td class="center">' + r.sl + '</td>';
-            html += '<td>' + r.partyName + '</td>';
-            html += '<td class="num">' + r.current + '</td>';
-            html += '<td class="num">' + (r.od || 0) + '</td>';
-            html += '<td class="num">' + r.total + '</td>';
+            html += '<td>' + that._escapeHtml(r.partyName) + '</td>';
+            html += '<td class="num">' + money(r.current) + '</td>';
+            html += '<td class="num">' + money(r.od) + '</td>';
+            html += '<td class="num">' + money(r.paid) + '</td>';
+            html += '<td class="num">' + money(r.total) + '</td>';
             html += '<td></td>';
             html += '</tr>';
-          }
+          });
+
+          html += '<tr class="grand"><td colspan="5" style="text-align:right">'
+            + that._escapeHtml(oGroup.name) + ' Total</td><td class="num">'
+            + sectionTotal + '</td><td></td></tr>';
+          html += '</table></div>';
         });
 
-        html += '<tr class="grand"><td colspan="4" style="text-align:right">Grand Total</td><td class="num">' + grandTotal + '</td><td></td></tr>';
-        html += '</table></body></html>';
+        html += '<table><tr class="grand"><td colspan="5" style="text-align:right">Grand Total</td>'
+          + '<td class="num" style="width:110px">' + grandTotal + '</td><td style="width:140px"></td></tr></table>';
+        html += '</body></html>';
 
         var printWindow = window.open('', '_blank');
         printWindow.document.write(html);
@@ -469,35 +552,45 @@ sap.ui.define(
       // ==================== DOWNLOAD EXCEL ====================
 
       onDownloadExcel: function () {
-        var oModel = this.getView().getModel("tagadaModel");
-        if (!oModel) { return; }
-        var rows = oModel.getProperty("/rows") || [];
-        var office = this.byId("idOffice").getSelectedKey();
+        var aGroups = this._groupedRows();
+        if (aGroups.length === 0) {
+          MessageBox.information("Nothing to export yet");
+          return;
+        }
         var month = this.byId("idMonth").getSelectedKey();
         var year = this.byId("idYear").getSelectedKey();
         var monthName = MONTHS[parseInt(month, 10) - 1];
 
+        var quote = function (v) {
+          var s = String(v == null ? "" : v);
+          return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        };
+
         var grandTotal = 0;
-        rows.forEach(function (r) { grandTotal += parseFloat(r.total) || 0; });
+        var csv = "Tagada Slip - " + monthName + " " + year + "\n";
 
-        // Build CSV
-        var csv = office + " - " + monthName + " " + year + "\n\n";
-        csv += "SL,Party Name,Current,OD,Total\n";
-
-        rows.forEach(function (r) {
-          if (r.partyName) {
-            var name = r.partyName.indexOf(",") > -1 ? '"' + r.partyName + '"' : r.partyName;
-            csv += r.sl + "," + name + "," + r.current + "," + (r.od || 0) + "," + r.total + "\n";
-          }
+        // Same sections as the print, in the same order.
+        aGroups.forEach(function (oGroup) {
+          var sectionTotal = 0;
+          csv += "\n" + quote(oGroup.name) + "\n";
+          csv += "SL,Party Name,Current,OD,Paid,Due\n";
+          oGroup.rows.forEach(function (r) {
+            sectionTotal += money(r.total);
+            csv += r.sl + "," + quote(r.partyName) + "," + money(r.current) + "," +
+              money(r.od) + "," + money(r.paid) + "," + money(r.total) + "\n";
+          });
+          grandTotal += sectionTotal;
+          csv += ",," + quote(oGroup.name + " Total") + ",,," + sectionTotal + "\n";
         });
 
-        csv += ",Grand Total,,," + grandTotal + "\n";
+        csv += "\n,,Grand Total,,," + grandTotal + "\n";
 
         var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         var link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "Tagada_" + office.replace(/ /g, "_") + "_" + monthName + "_" + year + ".csv";
+        link.download = "Tagada_" + monthName + "_" + year + ".csv";
         link.click();
+        URL.revokeObjectURL(link.href);
       },
 
       // ==================== PRINT INVOICES ====================
@@ -522,55 +615,41 @@ sap.ui.define(
         }
       },
 
+      /**
+       * Prints one invoice per party on the slip, in the slip's own order -
+       * consolidated parties first, then factory by factory - so the stack of
+       * invoices matches the sheet they are collected against.
+       *
+       * The clients come off the table rather than from a fresh query, so the
+       * OD and payment figures printed are exactly the ones on screen, edits
+       * included.
+       */
       onPrintInvoices: function () {
         var that = this;
-        var office = this.byId("idOffice").getSelectedKey();
         var month = this.byId("idMonth").getSelectedKey();
         var year = this.byId("idYear").getSelectedKey();
 
-        this._showPrintBusy("Loading clients...");
-
-        // Build OD map from current tagada table
-        var odMap = {};
-        var oModel = this.getView().getModel("tagadaModel");
-        if (oModel) {
-          var rows = oModel.getProperty("/rows") || [];
-          rows.forEach(function (r) {
-            if (r.partyName) {
-              odMap[r.partyName] = parseFloat(r.od) || 0;
-            }
+        var aParties = [];
+        this._groupedRows().forEach(function (oGroup) {
+          oGroup.rows.forEach(function (r) {
+            aParties.push({
+              client: r.partyName,
+              group: oGroup.name,
+              od: money(r.od),
+              paid: money(r.paid)
+            });
           });
+        });
+
+        if (aParties.length === 0) {
+          MessageBox.information("Load the slip first, then print the invoices");
+          return;
         }
 
+        this._showPrintBusy("Loading notices...");
         this.loadNotices(function (notices) {
           that._notices = notices;
-          $.ajax({
-            url: that.uri,
-            type: "POST",
-            data: {
-              method: "getAllClientsWithParam",
-              data: JSON.stringify({
-                month: month,
-                year: year,
-                machineType: "All",
-                officeType: office
-              })
-            },
-            dataType: "json",
-            success: function (clients) {
-              if (!clients || clients.length === 0) {
-                that._hidePrintBusy();
-                MessageBox.information("No clients found for the selected period");
-                return;
-              }
-              var clientNames = clients.map(function (c) { return c.client; });
-              that._fetchAllInvoices(clientNames, month, year, office, odMap);
-            },
-            error: function () {
-              that._hidePrintBusy();
-              MessageBox.error("Failed to fetch clients");
-            }
-          });
+          that._fetchAllInvoices(aParties, month, year);
         });
       },
 
@@ -582,46 +661,52 @@ sap.ui.define(
           .replace(/"/g, "&quot;");
       },
 
-      _fetchAllInvoices: function (clientNames, month, year, office, odMap) {
+      _fetchAllInvoices: function (aParties, month, year) {
         var that = this;
         var completed = 0;
         var allInvoices = [];
         var monthName = MONTHS[parseInt(month, 10) - 1];
 
-        // Clients whose invoice failed to load still count, otherwise a single
-        // failed request would leave the print waiting forever.
+        // A party whose invoice fails to load still counts, otherwise one bad
+        // request would leave the print waiting forever.
         var onClientDone = function () {
           completed++;
           that._showPrintBusy(
-            "Preparing invoices " + completed + " of " + clientNames.length + "..."
+            "Preparing invoices " + completed + " of " + aParties.length + "..."
           );
-          if (completed === clientNames.length) {
+          if (completed === aParties.length) {
             that._openInvoicePrint(allInvoices);
           }
         };
 
-        this._showPrintBusy("Preparing invoices 0 of " + clientNames.length + "...");
+        this._showPrintBusy("Preparing invoices 0 of " + aParties.length + "...");
 
-        clientNames.forEach(function (clientName) {
+        aParties.forEach(function (oParty, iOrder) {
           $.ajax({
             url: that.uri,
             type: "POST",
             data: {
               method: "getClientInvoice",
               data: JSON.stringify({
-                Client: clientName,
+                Client: oParty.client,
                 month: month,
                 year: year,
                 machineType: "All",
-                officeType: office
+                // Every factory, so a party billed at two of them gets one
+                // invoice broken down by factory rather than two invoices.
+                officeType: "All"
               })
             },
             dataType: "json",
             success: function (dataClient) {
               if (dataClient && dataClient.length > 0) {
-                var inv = that._processInvoiceData(dataClient, clientName, office, monthName, year);
-                inv.od = odMap[clientName] || 0;
-                inv.finalTotal = inv.total + inv.od;
+                var inv = that._processInvoiceData(
+                  dataClient, oParty.client, oParty.group, monthName, year
+                );
+                inv.order = iOrder;
+                inv.od = oParty.od;
+                inv.paid = oParty.paid;
+                inv.finalTotal = inv.total + oParty.od - oParty.paid;
                 allInvoices.push(inv);
               }
               onClientDone();
@@ -631,50 +716,22 @@ sap.ui.define(
         });
       },
 
-      _processInvoiceData: function (dataClient, clientName, cc, monthName, year) {
-        var millingLot = 0;
-        var invoiceData = {
-          client: clientName, cc: cc, month: monthName, year: year,
-          Shaving: {}, Buffing: {}, Milling: {}, Softening: [], Tangan: {},
-          ShavingTotal: 0, BuffingTotal: 0, SofteningTotal: 0, MillingTotal: 0, TanganTotal: 0
+      /**
+       * Builds one client's invoice, broken down by factory. The figures come
+       * from the shared helper the Invoice screen uses, so a slip invoice and
+       * the on-screen invoice for the same client always agree.
+       */
+      _processInvoiceData: function (dataClient, clientName, groupName, monthName, year) {
+        var oGrouped = this.groupInvoiceByFactory(dataClient);
+        return {
+          client: clientName,
+          cc: groupName,
+          month: monthName,
+          year: year,
+          factories: oGrouped.factories,
+          multiFactory: oGrouped.multiFactory,
+          total: oGrouped.total
         };
-        var total = 0;
-
-        dataClient.forEach(function (el) {
-          var qty = parseFloat(el.quantity);
-          if (el.machineType === "Softening") {
-            invoiceData.Softening.push(el);
-          } else if (el.machineType === "Milling") {
-            millingLot++;
-            invoiceData.Milling[el.rate] = (invoiceData.Milling[el.rate] || 0) + qty;
-          } else if (invoiceData[el.machineType] !== undefined) {
-            invoiceData[el.machineType][el.rate] = (invoiceData[el.machineType][el.rate] || 0) + qty;
-          }
-          total += parseFloat(el.total);
-          invoiceData.MillingLot = millingLot;
-        });
-
-        ["Shaving", "Buffing", "Milling", "Tangan"].forEach(function (sec) {
-          var arr = [];
-          Object.keys(invoiceData[sec]).forEach(function (rate) {
-            var qty = invoiceData[sec][rate];
-            arr.push({ desc: qty + " X " + rate, total: rate * qty });
-            invoiceData[sec + "Total"] += rate * qty;
-          });
-          invoiceData[sec] = arr;
-        });
-
-        var softArr = [];
-        invoiceData.Softening.forEach(function (v) {
-          var desc = v.quantity > 3
-            ? v.quantity + "hrs = 400 + " + (v.quantity - 3) * v.rate
-            : v.quantity + "hrs = 400";
-          softArr.push({ date: v.date, desc: desc, total: parseFloat(v.total) });
-          invoiceData.SofteningTotal += parseFloat(v.total);
-        });
-        invoiceData.Softening = softArr;
-        invoiceData.total = total;
-        return invoiceData;
       },
 
       _openInvoicePrint: function (allInvoices) {
@@ -687,7 +744,9 @@ sap.ui.define(
 
         this._showPrintBusy("Opening print preview...");
 
-        allInvoices.sort(function (a, b) { return a.client.localeCompare(b.client); });
+        // Keep the slip's own order - consolidated parties first, then factory
+        // by factory - so the printed stack matches the sheet.
+        allInvoices.sort(function (a, b) { return a.order - b.order; });
 
         var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Monthly Invoices</title>';
         html += '<style>';
@@ -714,6 +773,8 @@ sap.ui.define(
         html += '.totals-row .label { min-width: 140px; text-align: right; padding-right: 20px; }';
         html += '.totals-row .value { min-width: 100px; text-align: right; }';
         html += '.totals-row.final { font-size: 20px; font-weight: bold; }';
+        html += '.factory-name { text-align: center; font-size: 17px; font-weight: bold; margin: 20px 0 4px 0; }';
+        html += '.factory-total { font-size: 17px; font-weight: bold; margin-top: 6px; }';
         html += '.notice-block { margin-bottom: 16px; }';
         html += '.notice-item { font-size: 16px; font-weight: bold; text-decoration: underline; text-align: center; padding: 2px 0; white-space: pre-wrap; }';
         html += '@media print { .page { width: 100%; padding: 20px 15px; } }';
@@ -745,33 +806,48 @@ sap.ui.define(
             { key: "Tangan", title: "Tangan", totalKey: "TanganTotal" }
           ];
 
-          sections.forEach(function (sec) {
-            if (inv[sec.key].length > 0) {
-              html += '<div class="section-title">' + sec.title + '</div>';
-              inv[sec.key].forEach(function (item) {
-                if (sec.key === "Softening") {
-                  html += '<div class="row item charbi-line"><div class="col-left"><span>' + item.date + '</span><span>' + item.desc + '</span></div><div class="col-right">' + item.total + '</div></div>';
-                } else {
-                  html += '<div class="row item"><div class="col-left">' + item.desc + '</div><div class="col-right">' + item.total + '</div></div>';
+          // One block per factory, each totalling on its own. A party billed at
+          // a single factory prints as it always did, with no extra heading.
+          inv.factories.forEach(function (oFactory) {
+            if (oFactory.showHeader) {
+              html += '<div class="factory-name">' + that._escapeHtml(oFactory.cc) + '</div>';
+            }
+
+            sections.forEach(function (sec) {
+              if (oFactory[sec.key].length > 0) {
+                html += '<div class="section-title">' + sec.title + '</div>';
+                oFactory[sec.key].forEach(function (item) {
+                  if (sec.key === "Softening") {
+                    html += '<div class="row item charbi-line"><div class="col-left"><span>' + item.date + '</span><span>' + item.desc + '</span></div><div class="col-right">' + item.total + '</div></div>';
+                  } else {
+                    html += '<div class="row item"><div class="col-left">' + item.desc + '</div><div class="col-right">' + item.total + '</div></div>';
+                  }
+                });
+                if (sec.key === "Milling") {
+                  html += '<div class="milling-lot">' + oFactory.MillingLot + ' Lot</div>';
                 }
-              });
-              if (sec.key === "Milling") {
-                html += '<div class="milling-lot">' + inv.MillingLot + ' Lot</div>';
+                html += '<div class="row subtotal"><div class="col-left"></div><div class="col-right">' + oFactory[sec.totalKey] + '</div></div>';
               }
-              html += '<div class="row subtotal"><div class="col-left"></div><div class="col-right">' + inv[sec.totalKey] + '</div></div>';
+            });
+
+            if (oFactory.showHeader) {
+              html += '<div class="totals-row factory-total"><span class="label">Total:</span><span class="value">' + oFactory.total + '</span></div>';
             }
           });
 
           html += '<div class="totals-block">';
+          html += '<div class="totals-row"><span class="label">Grand Total:</span><span class="value">' + inv.total + '</span></div>';
           if (inv.od !== 0) {
-            // A negative OD is money already paid, so it prints as an advance
-            // and is shown without its minus sign - the label carries the sign.
+            // A negative OD is money already in hand, so it prints as an
+            // advance without its minus sign - the label carries the sign.
             var bAdvance = inv.od < 0;
-            html += '<div class="totals-row"><span class="label">Grand Total:</span><span class="value">' + inv.total + '</span></div>';
             html += '<div class="totals-row"><span class="label">' + (bAdvance ? 'Adv:' : 'OD:') + '</span><span class="value">' + (bAdvance ? '- ' + Math.abs(inv.od) : inv.od) + '</span></div>';
+          }
+          if (inv.paid !== 0) {
+            html += '<div class="totals-row"><span class="label">Payment Received:</span><span class="value">- ' + Math.abs(inv.paid) + '</span></div>';
+          }
+          if (inv.od !== 0 || inv.paid !== 0) {
             html += '<div class="totals-row final"><span class="label">Total:</span><span class="value">' + inv.finalTotal + '</span></div>';
-          } else {
-            html += '<div class="totals-row final"><span class="label">Grand Total:</span><span class="value">' + inv.total + '</span></div>';
           }
           html += '</div>';
 

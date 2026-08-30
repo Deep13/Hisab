@@ -62,6 +62,111 @@ sap.ui.define([
       });
     },
 
+    // ---- Invoice figures (shared by the Invoice screen and the Tagada Slip) ----
+
+    /**
+     * Rolls one factory's transaction rows into the per-machine-type lines and
+     * subtotals an invoice prints. Shared so the two screens that print
+     * invoices can never disagree about a client's figures.
+     */
+    buildFactoryBlock: function (aRows) {
+      var millingLot = 0;
+      var oBlock = {
+        Shaving: {}, Buffing: {}, Milling: {}, Softening: [], Tangan: {},
+        ShavingTotal: 0, BuffingTotal: 0, SofteningTotal: 0, MillingTotal: 0,
+        TanganTotal: 0
+      };
+      var total = 0;
+
+      (aRows || []).forEach(function (element) {
+        var sType = element.machineType;
+        if (sType === "Shaving" || sType === "Buffing" ||
+            sType === "Tangan" || sType === "Milling") {
+          if (sType === "Milling") {
+            millingLot++;
+          }
+          oBlock[sType][element.rate] =
+            (oBlock[sType][element.rate] || 0) + parseFloat(element.quantity);
+        } else if (sType === "Softening") {
+          oBlock.Softening.push(element);
+        }
+        total = total + parseFloat(element.total);
+      });
+      oBlock.MillingLot = millingLot;
+
+      var oLines = {
+        Shaving: [], Buffing: [], Milling: [], Softening: [], Tangan: []
+      };
+      Object.keys(oLines).forEach(function (sType) {
+        if (sType !== "Softening") {
+          Object.keys(oBlock[sType]).forEach(function (sRate) {
+            oLines[sType].push({
+              desc: oBlock[sType][sRate] + " X " + sRate,
+              total: sRate * oBlock[sType][sRate]
+            });
+            oBlock[sType + "Total"] += sRate * oBlock[sType][sRate];
+          });
+        } else {
+          oBlock.Softening.forEach(function (values) {
+            var desc = values.quantity > 3
+              ? values.quantity + "hrs = 400 + " + (values.quantity - 3) * values.rate
+              : values.quantity + "hrs = 400";
+            oLines.Softening.push({
+              date: values.date,
+              desc: desc,
+              total: parseFloat(values.total)
+            });
+            oBlock.SofteningTotal += parseFloat(values.total);
+          });
+        }
+      });
+
+      oBlock.Shaving = oLines.Shaving;
+      oBlock.Buffing = oLines.Buffing;
+      oBlock.Milling = oLines.Milling;
+      oBlock.Softening = oLines.Softening;
+      oBlock.Tangan = oLines.Tangan;
+      oBlock.total = total;
+      return oBlock;
+    },
+
+    /**
+     * Splits a client's month into one block per factory, each totalling on its
+     * own, plus the total across all of them. A client billed at a single
+     * factory comes back as a list of one with its heading suppressed, so the
+     * invoice looks exactly as it always did.
+     */
+    groupInvoiceByFactory: function (aRows) {
+      var that = this;
+      var mByFactory = {};
+      var aOrder = [];
+
+      (aRows || []).forEach(function (element) {
+        var sCc = String(element.cc == null ? "" : element.cc).trim() || "Unassigned";
+        if (!mByFactory[sCc]) {
+          mByFactory[sCc] = [];
+          aOrder.push(sCc);
+        }
+        mByFactory[sCc].push(element);
+      });
+      aOrder.sort();
+
+      var total = 0;
+      var aFactories = aOrder.map(function (sCc) {
+        var oBlock = that.buildFactoryBlock(mByFactory[sCc]);
+        oBlock.cc = sCc;
+        total += oBlock.total;
+        return oBlock;
+      });
+
+      var bMulti = aFactories.length > 1;
+      aFactories.forEach(function (oBlock) {
+        oBlock.showHeader = bMulti;
+      });
+
+      return { factories: aFactories, multiFactory: bMulti, total: total };
+    },
+
     // ---- New client confirmation (shared by all transaction screens) ----
     // A client name typed by hand is added to the master automatically. That
     // is convenient but silently turns a typo into a permanent client, so a
