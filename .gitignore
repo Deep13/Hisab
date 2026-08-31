@@ -1,0 +1,6 @@
+# Rewritten by the sync scripts on every run, so it is never uploaded.
+tools/last-sync.log
+
+# Safety copies of the laptop database, taken before each import.
+# These stay on the machine that made them.
+backups/
