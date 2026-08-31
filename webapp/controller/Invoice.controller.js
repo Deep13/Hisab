@@ -72,6 +72,8 @@ sap.ui.define(
             invoiceData.od = 0;
             invoiceData.hasPaid = false;
             invoiceData.paid = 0;
+            invoiceData.hasWrittenOff = false;
+            invoiceData.writtenOff = 0;
             invoiceData.hasFinal = false;
             invoiceData.finalTotal = total;
             // Toggled by the "Exclude OD" box in the header; starts off so a
@@ -112,7 +114,10 @@ sap.ui.define(
                   // they are tested separately.
                   var od = parseFloat(match.od) || 0;
                   var paid = parseFloat(match.paid) || 0;
-                  if (!od && !paid) {
+                  // Money the client was let off. Without this line the invoice
+                  // would still bill them for an amount already forgiven.
+                  var writtenOff = parseFloat(match.writtenOff) || 0;
+                  if (!od && !paid && !writtenOff) {
                     return;
                   }
 
@@ -128,7 +133,12 @@ sap.ui.define(
                     oViewModel.setProperty("/paidDisplay", "- " + Math.abs(paid));
                     oViewModel.setProperty("/hasPaid", true);
                   }
-                  oViewModel.setProperty("/finalTotal", total + od - paid);
+                  if (writtenOff) {
+                    oViewModel.setProperty("/writtenOff", writtenOff);
+                    oViewModel.setProperty("/writtenOffDisplay", "- " + Math.abs(writtenOff));
+                    oViewModel.setProperty("/hasWrittenOff", true);
+                  }
+                  oViewModel.setProperty("/finalTotal", total + od - paid - writtenOff);
                   oViewModel.setProperty("/hasFinal", true);
                 }
               });

@@ -204,6 +204,10 @@
 			<HBox visible="{= ${viewModel>/hasPaid} &amp;&amp; !${viewModel>/excludeOd} }" justifyContent="End" width="100%">
 				<Title level="H1" text="Payment Received: {viewModel>/paidDisplay}"/>
 			</HBox>
+			<!-- Money the client was let off, so the total below settles to nil -->
+			<HBox visible="{= ${viewModel>/hasWrittenOff} &amp;&amp; !${viewModel>/excludeOd} }" justifyContent="End" width="100%">
+				<Title level="H1" text="Less / Write-off: {viewModel>/writtenOffDisplay}"/>
+			</HBox>
 			<HBox visible="{= ${viewModel>/hasFinal} &amp;&amp; !${viewModel>/excludeOd} }" justifyContent="End" width="100%">
 				<Title level="H1" text="Total: {viewModel>/finalTotal}"/>
 			</HBox>

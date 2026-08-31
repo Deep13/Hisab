@@ -142,13 +142,20 @@ sap.ui.define(
           var bMulti = aOffices.length > 1;
           var oBal = mBalance[sKey] || {};
           var od = money(oBal.od);
-          var paid = money(oBal.paid);
+          var cash = money(oBal.paid);
+          var writtenOff = money(oBal.writtenOff);
+          // The slip shows one Paid column, so cash and money let off are added
+          // together here. They are kept apart on the row so the invoices
+          // printed from this screen can still list them separately.
+          var paid = cash + writtenOff;
 
           aRows.push({
             partyName: oClient.partyName,
             offices: oClient.offices,
             current: oClient.current,
             od: od,
+            cash: cash,
+            writtenOff: writtenOff,
             paid: paid,
             total: oClient.current + od - paid,
             group: bMulti ? ALL_GROUP : aOffices[0],
@@ -264,6 +271,8 @@ sap.ui.define(
           partyName: "",
           current: 0,
           od: 0,
+          cash: 0,
+          writtenOff: 0,
           paid: 0,
           total: 0,
           group: OTHER_GROUP,
@@ -404,6 +413,8 @@ sap.ui.define(
               partyName: oldRow.partyName,
               current: current,
               od: od,
+              cash: 0,
+              writtenOff: 0,
               paid: 0,
               total: current + od,
               group: OTHER_GROUP,
@@ -636,7 +647,10 @@ sap.ui.define(
               client: r.partyName,
               group: oGroup.name,
               od: money(r.od),
-              paid: money(r.paid)
+              // Cash and money let off go across separately: the slip merges
+              // them into one column, but an invoice has to spell both out.
+              paid: money(r.cash !== undefined ? r.cash : r.paid),
+              writtenOff: money(r.writtenOff)
             });
           });
         });
@@ -706,7 +720,8 @@ sap.ui.define(
                 inv.order = iOrder;
                 inv.od = oParty.od;
                 inv.paid = oParty.paid;
-                inv.finalTotal = inv.total + oParty.od - oParty.paid;
+                inv.writtenOff = oParty.writtenOff;
+                inv.finalTotal = inv.total + oParty.od - oParty.paid - oParty.writtenOff;
                 allInvoices.push(inv);
               }
               onClientDone();
@@ -846,7 +861,10 @@ sap.ui.define(
           if (inv.paid !== 0) {
             html += '<div class="totals-row"><span class="label">Payment Received:</span><span class="value">- ' + Math.abs(inv.paid) + '</span></div>';
           }
-          if (inv.od !== 0 || inv.paid !== 0) {
+          if (inv.writtenOff !== 0) {
+            html += '<div class="totals-row"><span class="label">Less / Write-off:</span><span class="value">- ' + Math.abs(inv.writtenOff) + '</span></div>';
+          }
+          if (inv.od !== 0 || inv.paid !== 0 || inv.writtenOff !== 0) {
             html += '<div class="totals-row final"><span class="label">Total:</span><span class="value">' + inv.finalTotal + '</span></div>';
           }
           html += '</div>';

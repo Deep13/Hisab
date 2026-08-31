@@ -159,9 +159,23 @@ sap.ui.define(
       },
 
       _setDayModel: function (res) {
+        var mLessByPayment = {};
+        (res.writeoffs || []).forEach(function (w) {
+          if (w.parentId) {
+            mLessByPayment[w.parentId] = w.amount;
+          }
+        });
+
         var decorate = function (entry) {
           entry.categoryLabel = LABELS[entry.category] || entry.category;
           if (entry.category === "client_payment") {
+            entry.details = entry.client + (entry.note ? " - " + entry.note : "");
+            // Shown on the payment row so the pair reads as one settlement.
+            if (mLessByPayment[entry.id]) {
+              entry.details += "  (less " +
+                mLessByPayment[entry.id].toLocaleString("en-IN") + ")";
+            }
+          } else if (entry.category === "client_writeoff") {
             entry.details = entry.client + (entry.note ? " - " + entry.note : "");
           } else if (entry.category === "machine_expense") {
             entry.details = entry.cc + " / " + entry.machineName +
@@ -174,9 +188,12 @@ sap.ui.define(
 
         res.credits = (res.credits || []).map(decorate);
         res.debits = (res.debits || []).map(decorate);
+        res.writeoffs = (res.writeoffs || []).map(decorate);
+        res.hasWriteoffs = res.writeoffs.length > 0;
         res.carriedText = res.carried.toLocaleString("en-IN");
         res.totalCreditText = res.totalCredit.toLocaleString("en-IN");
         res.totalDebitText = res.totalDebit.toLocaleString("en-IN");
+        res.totalWriteoffText = (res.totalWriteoff || 0).toLocaleString("en-IN");
         res.closingText = res.closing.toLocaleString("en-IN");
         res.closingState = res.closing >= 0 ? "Success" : "Error";
 
@@ -203,6 +220,20 @@ sap.ui.define(
         this._openEntryDialog(sDirection, oEntry);
       },
 
+      // The write-off that was entered with a given payment, if any. Matched on
+      // parentId rather than client and date, so a client paying twice in one
+      // day keeps two separate, correct pairs.
+      _writeoffFor: function (iPaymentId) {
+        var oModel = this.getView().getModel("khataModel");
+        if (!oModel || !iPaymentId) {
+          return "";
+        }
+        var aMatch = (oModel.getProperty("/writeoffs") || []).filter(function (w) {
+          return w.parentId === iPaymentId;
+        });
+        return aMatch.length ? aMatch[0].amount : "";
+      },
+
       _openEntryDialog: function (sDirection, oEntry) {
         var that = this;
         var bEdit = !!oEntry;
@@ -222,6 +253,8 @@ sap.ui.define(
           machineName: bEdit ? oEntry.machineName : "",
           note: bEdit ? oEntry.note : "",
           amount: bEdit ? oEntry.amount : "",
+          // Whatever was let off with this payment, so editing shows it back.
+          writeoff: bEdit ? this._writeoffFor(oEntry.id) : "",
         };
         Object.assign(oData, this._categoryFlags(sCategory));
 
@@ -251,6 +284,11 @@ sap.ui.define(
           return {
             showClient: true,
             showMachine: false,
+            // Money a client is let off rides along with what they paid, so it
+            // is only ever offered here.
+            showWriteoff: true,
+            amountLabel: "Received",
+            clientPlaceholder: "Select the client who paid",
             noteLabel: "Remark",
             notePlaceholder: "e.g. cash, cheque no.",
           };
@@ -259,6 +297,9 @@ sap.ui.define(
           return {
             showClient: false,
             showMachine: true,
+            showWriteoff: false,
+            amountLabel: "Amount",
+            clientPlaceholder: "",
             noteLabel: "Spent On",
             notePlaceholder: "e.g. Belt change",
           };
@@ -266,6 +307,9 @@ sap.ui.define(
         return {
           showClient: false,
           showMachine: false,
+          showWriteoff: false,
+          amountLabel: "Amount",
+          clientPlaceholder: "",
           noteLabel: "Details",
           notePlaceholder: "Optional note",
         };
@@ -277,6 +321,11 @@ sap.ui.define(
         var oData = oModel.getData();
         Object.assign(oData, this._categoryFlags(sCategory));
         oData.category = sCategory;
+        // Switching away from a client payment must not leave a write-off
+        // behind on a category that cannot carry one.
+        if (!oData.showWriteoff) {
+          oData.writeoff = "";
+        }
         oModel.setData(oData);
       },
 
@@ -307,9 +356,22 @@ sap.ui.define(
       onSaveEntry: function () {
         var that = this;
         var oData = this.getView().getModel("entryModel").getData();
-        var fAmount = parseFloat(oData.amount);
+        var fAmount = parseFloat(oData.amount) || 0;
+        var bWriteoff = !!oData.showWriteoff;
+        var fWriteoff = bWriteoff ? (parseFloat(oData.writeoff) || 0) : 0;
 
-        if (!fAmount || fAmount <= 0) {
+        if (fAmount < 0 || fWriteoff < 0) {
+          MessageBox.error("Amounts cannot be negative");
+          return;
+        }
+        // The whole bill may be forgiven, so on a client payment it is the pair
+        // that has to add up to something rather than the amount alone.
+        if (bWriteoff) {
+          if (fAmount + fWriteoff <= 0) {
+            MessageBox.error("Enter an amount received, a write-off, or both");
+            return;
+          }
+        } else if (fAmount <= 0) {
           MessageBox.error("Enter an amount greater than zero");
           return;
         }
@@ -330,6 +392,7 @@ sap.ui.define(
               machineName: oData.machineName || "",
               note: oData.note || "",
               amount: fAmount,
+              writeoff: fWriteoff,
             }),
           },
           dataType: "json",
@@ -422,10 +485,21 @@ sap.ui.define(
         html += '<h1>Daily Khata</h1>';
         html += '<h2>' + esc(d.date) + '</h2>';
 
-        [
+        var aSections = [
           { title: "Credit (money in)", rows: d.credits, total: d.totalCredit },
           { title: "Debit (money out)", rows: d.debits, total: d.totalDebit }
-        ].forEach(function (sec) {
+        ];
+        // Printed only when there is something to print, and never folded into
+        // the cash summary below.
+        if ((d.writeoffs || []).length) {
+          aSections.push({
+            title: "Write off / Less (not cash received)",
+            rows: d.writeoffs,
+            total: d.totalWriteoff
+          });
+        }
+
+        aSections.forEach(function (sec) {
           html += '<div class="section-title">' + sec.title + '</div>';
           html += '<table><tr><th style="width:170px">Against</th><th>Details</th><th class="num" style="width:120px">Amount</th></tr>';
           if (!sec.rows.length) {
@@ -444,6 +518,10 @@ sap.ui.define(
         html += '<div>+ Total Credit: ' + money(d.totalCredit) + '</div>';
         html += '<div>&minus; Total Debit: ' + money(d.totalDebit) + '</div>';
         html += '<div class="closing">Closing Balance: ' + money(d.closing) + '</div>';
+        if ((d.writeoffs || []).length) {
+          html += '<div style="margin-top:8px;color:#6a6d70">Written off (no cash): '
+            + money(d.totalWriteoff) + '</div>';
+        }
         html += '</div></body></html>';
 
         var w = window.open('', '_blank');

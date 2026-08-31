@@ -75,6 +75,9 @@
 										class="sapUiLargeMarginEnd"/>
 									<ObjectStatus title="Paid" text="{ledgerModel>/paidText}" state="Success"
 										class="sapUiLargeMarginEnd"/>
+									<ObjectStatus title="Written Off" text="{ledgerModel>/writtenOffText}"
+										state="Warning" visible="{ledgerModel>/hasWrittenOff}"
+										class="sapUiLargeMarginEnd"/>
 									<ObjectStatus title="Balance" text="{ledgerModel>/balanceText}"
 										state="{ledgerModel>/balanceState}"/>
 								</HBox>
@@ -90,13 +93,15 @@
 							</headerToolbar>
 							<columns>
 								<Column width="12rem"><Label text="Date"/></Column>
+								<Column width="12rem"><Label text="Type"/></Column>
 								<Column><Label text="Remark"/></Column>
 								<Column width="10rem" hAlign="End"><Label text="Amount"/></Column>
 							</columns>
 							<items>
-								<ColumnListItem highlight="{= ${ledgerModel>inMonth} ? 'Success' : 'None' }">
+								<ColumnListItem highlight="{ledgerModel>highlight}">
 									<cells>
 										<Text text="{ledgerModel>date}"/>
+										<Text text="{ledgerModel>typeLabel}"/>
 										<Text text="{ledgerModel>note}"/>
 										<Text text="{ledgerModel>amountText}"/>
 									</cells>
@@ -156,6 +161,7 @@
 								<Column width="10rem" hAlign="End"><Label text="OD"/></Column>
 								<Column width="10rem" hAlign="End"><Label text="Billed"/></Column>
 								<Column width="10rem" hAlign="End"><Label text="Paid"/></Column>
+								<Column width="10rem" hAlign="End"><Label text="Less"/></Column>
 								<Column width="12rem" hAlign="End"><Label text="Balance"/></Column>
 							</columns>
 							<items>
@@ -165,6 +171,7 @@
 										<Text text="{balanceModel>odText}"/>
 										<Text text="{balanceModel>billedText}"/>
 										<Text text="{balanceModel>paidText}"/>
+										<Text text="{balanceModel>writtenOffText}"/>
 										<ObjectStatus text="{balanceModel>balanceText}" state="{balanceModel>balanceState}"/>
 									</cells>
 								</ColumnListItem>

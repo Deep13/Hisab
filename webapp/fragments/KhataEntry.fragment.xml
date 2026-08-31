@@ -13,7 +13,7 @@
 
 					<Label text="Client" required="true" visible="{entryModel>/showClient}"/>
 					<ComboBox id="idEntryClient" width="100%" visible="{entryModel>/showClient}"
-						selectedKey="{entryModel>/client}" placeholder="Select the client who paid"
+						selectedKey="{entryModel>/client}" placeholder="{entryModel>/clientPlaceholder}"
 						items="{ClientModel>/Clients_results}">
 						<core:Item key="{ClientModel>client}" text="{ClientModel>client}"/>
 					</ComboBox>
@@ -36,9 +36,14 @@
 					<Input id="idEntryNote" width="100%" value="{entryModel>/note}" maxLength="255"
 						placeholder="{entryModel>/notePlaceholder}"/>
 
-					<Label text="Amount" required="true"/>
+					<Label text="{entryModel>/amountLabel}" required="true"/>
 					<Input id="idEntryAmount" width="100%" value="{entryModel>/amount}" type="Number"
 						textAlign="End" placeholder="0"/>
+
+					<Label text="Less / Write-off" visible="{entryModel>/showWriteoff}"/>
+					<Input id="idEntryWriteoff" width="100%" value="{entryModel>/writeoff}" type="Number"
+						textAlign="End" placeholder="0" visible="{entryModel>/showWriteoff}"
+						description="settles the client, not counted as cash"/>
 				</l:content>
 			</l:SimpleForm>
 		</content>

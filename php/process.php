@@ -1000,11 +1000,43 @@ function saveNotice() {
 // therefore reads debits from both tables.
 
 // Credit categories need a client only for 'client_payment'.
+//
+// 'writeoff' is a third direction, not a credit category. Money a client was
+// let off settles their account without any cash arriving, and every cash
+// figure in this file is worked out by comparing `direction` to the literal
+// string 'credit' - so keeping write-offs outside that value is what stops
+// them inflating the day's takings and the closing balance.
 function khataCategories() {
     return [
         "credit" => ["client_payment", "thaktha_bhara", "other"],
         "debit" => ["churi", "buff_paper", "mobil", "bhussi", "v_belt", "other"],
+        "writeoff" => ["client_writeoff"],
     ];
+}
+
+/**
+ * Whether sql/migrate_writeoff.sql has been applied here.
+ *
+ * This matters because the sync script pulls code without running migrations,
+ * so the office desktop can be running new code against the old schema. MySQL
+ * here has no STRICT mode, so writing 'writeoff' into the original varchar(6)
+ * `direction` would silently store 'writeo' - a row that matches no write-off
+ * query yet is counted as a cash debit. Better to refuse the save and say so.
+ */
+function khataSupportsWriteoff($conn) {
+    static $ok = null;
+    if ($ok === null) {
+        $ok = false;
+        $res = @$conn->query("SHOW COLUMNS FROM `daily_khata` LIKE 'direction'");
+        $row = $res ? $res->fetch_assoc() : null;
+        $wideEnough = $row && preg_match('/varchar\((\d+)\)/i', $row["Type"], $m) && (int)$m[1] >= 8;
+
+        $res = @$conn->query("SHOW COLUMNS FROM `daily_khata` LIKE 'parent_id'");
+        $hasParent = $res && $res->num_rows > 0;
+
+        $ok = $wideEnough && $hasParent;
+    }
+    return $ok;
 }
 
 // The one-time cash-in-hand the day book starts from.
@@ -1024,7 +1056,10 @@ function khataOpeningRow($conn) {
 function khataNetBefore($conn, $date, $openingDate) {
     $net = 0.0;
 
-    $sql = "SELECT direction, COALESCE(SUM(amount), 0) AS total FROM daily_khata WHERE entry_date < ?";
+    // Only cash directions: a write-off never moved money, and the fold below
+    // would otherwise treat it as a debit and take it out of the cash box.
+    $sql = "SELECT direction, COALESCE(SUM(amount), 0) AS total FROM daily_khata
+            WHERE direction IN ('credit', 'debit') AND entry_date < ?";
     $params = [$date];
     $types = "s";
     if ($openingDate) {
@@ -1082,9 +1117,15 @@ function getDailyKhata() {
 
     $credits = [];
     $debits = [];
+    // Kept apart from the two cash lists on purpose: the totals below are built
+    // from those lists, so a write-off cannot reach them however this grows.
+    $writeoffs = [];
 
+    // parent_id only exists once the write-off migration has run, so the day
+    // book keeps working on a machine that has not had it applied yet.
+    $parentCol = khataSupportsWriteoff($conn) ? "parent_id" : "NULL AS parent_id";
     $stmt = $conn->prepare(
-        "SELECT id, direction, category, client, note, amount
+        "SELECT id, $parentCol, direction, category, client, note, amount
          FROM daily_khata WHERE entry_date = ? ORDER BY id ASC"
     );
     $stmt->bind_param("s", $date);
@@ -1093,6 +1134,7 @@ function getDailyKhata() {
     while ($row = $result->fetch_assoc()) {
         $entry = [
             "id" => (int)$row["id"],
+            "parentId" => $row["parent_id"] === null ? 0 : (int)$row["parent_id"],
             "source" => "khata",
             "category" => $row["category"],
             "client" => $row["client"],
@@ -1101,7 +1143,9 @@ function getDailyKhata() {
             "cc" => "",
             "machineName" => "",
         ];
-        if ($row["direction"] === "credit") {
+        if ($row["direction"] === "writeoff") {
+            $writeoffs[] = $entry;
+        } elseif ($row["direction"] === "credit") {
             $credits[] = $entry;
         } else {
             $debits[] = $entry;
@@ -1134,6 +1178,10 @@ function getDailyKhata() {
     foreach ($credits as $c) { $totalCredit += $c["amount"]; }
     $totalDebit = 0.0;
     foreach ($debits as $d) { $totalDebit += $d["amount"]; }
+    // Reported so the day can be explained, but deliberately left out of the
+    // closing balance - no cash moved.
+    $totalWriteoff = 0.0;
+    foreach ($writeoffs as $w) { $totalWriteoff += $w["amount"]; }
 
     return json_encode([
         "status" => "success",
@@ -1143,8 +1191,11 @@ function getDailyKhata() {
         "carried" => $carried,
         "credits" => $credits,
         "debits" => $debits,
+        "writeoffs" => $writeoffs,
+        "writeoffSupported" => khataSupportsWriteoff($conn),
         "totalCredit" => $totalCredit,
         "totalDebit" => $totalDebit,
+        "totalWriteoff" => $totalWriteoff,
         "closing" => $carried + $totalCredit - $totalDebit,
     ]);
 }
@@ -1165,6 +1216,8 @@ function saveKhataEntry() {
     $amount = (float)($obj->amount ?? 0);
     $client = trim($obj->client ?? '');
     $id = (int)($obj->id ?? 0);
+    // Money the client was let off, entered alongside what they actually paid.
+    $writeoff = (float)($obj->writeoff ?? 0);
 
     if ($date === '') {
         return json_encode(["status" => "failed", "error" => "Date is required"]);
@@ -1175,8 +1228,27 @@ function saveKhataEntry() {
     } elseif (!isset($cats[$direction]) || !in_array($category, $cats[$direction], true)) {
         return json_encode(["status" => "failed", "error" => "Unknown category for this direction"]);
     }
-    if ($amount <= 0) {
+    // A write-off only ever rides along with a client payment.
+    $bWriteoffAllowed = ($category === "client_payment");
+    if (!$bWriteoffAllowed) {
+        $writeoff = 0.0;
+    }
+    if ($writeoff < 0) {
+        return json_encode(["status" => "failed", "error" => "Write-off cannot be negative"]);
+    }
+    if ($writeoff > 0 && !khataSupportsWriteoff($conn)) {
+        return json_encode([
+            "status" => "failed",
+            "error" => "Write-offs are not set up on this computer yet. Please run sql/migrate_writeoff.sql once, then try again.",
+        ]);
+    }
+    // The whole bill may be forgiven, in which case nothing was received - so
+    // it is the pair that has to add up to something, not the payment alone.
+    if ($amount + $writeoff <= 0) {
         return json_encode(["status" => "failed", "error" => "Amount must be greater than zero"]);
+    }
+    if ($amount < 0) {
+        return json_encode(["status" => "failed", "error" => "Amount cannot be negative"]);
     }
     if ($category === "client_payment" && $client === '') {
         return json_encode(["status" => "failed", "error" => "Select the client who paid"]);
@@ -1222,32 +1294,122 @@ function saveKhataEntry() {
         return json_encode(["status" => "failed", "error" => "Could not save the machine expense"]);
     }
 
-    $clientValue = $category === "client_payment" ? $client : null;
+    // Client-scoped rows keep their client; everything else has none.
+    $clientValue = ($category === "client_payment" || $category === "client_writeoff")
+        ? $client : null;
 
-    if ($id > 0) {
-        $stmt = @$conn->prepare(
-            "UPDATE `daily_khata` SET `entry_date` = ?, `direction` = ?, `category` = ?,
-             `client` = ?, `note` = ?, `amount` = ? WHERE `id` = ?"
-        );
-        if (!$stmt) {
-            return json_encode(["status" => "failed", "error" => "Table 'daily_khata' does not exist. Please run sql/daily_khata.sql."]);
+    // The payment and the money let off are one act of settling an account, so
+    // they are written together or not at all.
+    $conn->begin_transaction();
+
+    $paymentId = $id;
+    // Received nothing and forgave the lot: there is no payment row to write,
+    // and any earlier one is cleared away below.
+    $bHasPayment = ($amount > 0);
+
+    if ($bHasPayment) {
+        if ($id > 0) {
+            $stmt = @$conn->prepare(
+                "UPDATE `daily_khata` SET `entry_date` = ?, `direction` = ?, `category` = ?,
+                 `client` = ?, `note` = ?, `amount` = ? WHERE `id` = ?"
+            );
+            if (!$stmt) {
+                $conn->rollback();
+                return json_encode(["status" => "failed", "error" => "Table 'daily_khata' does not exist. Please run sql/daily_khata.sql."]);
+            }
+            $stmt->bind_param("sssssdi", $date, $direction, $category, $clientValue, $note, $amount, $id);
+        } else {
+            $stmt = @$conn->prepare(
+                "INSERT INTO `daily_khata` (`entry_date`, `direction`, `category`, `client`, `note`, `amount`)
+                 VALUES (?, ?, ?, ?, ?, ?)"
+            );
+            if (!$stmt) {
+                $conn->rollback();
+                return json_encode(["status" => "failed", "error" => "Table 'daily_khata' does not exist. Please run sql/daily_khata.sql."]);
+            }
+            $stmt->bind_param("sssssd", $date, $direction, $category, $clientValue, $note, $amount);
         }
-        $stmt->bind_param("sssssdi", $date, $direction, $category, $clientValue, $note, $amount, $id);
-    } else {
-        $stmt = @$conn->prepare(
-            "INSERT INTO `daily_khata` (`entry_date`, `direction`, `category`, `client`, `note`, `amount`)
-             VALUES (?, ?, ?, ?, ?, ?)"
-        );
-        if (!$stmt) {
-            return json_encode(["status" => "failed", "error" => "Table 'daily_khata' does not exist. Please run sql/daily_khata.sql."]);
+
+        if (!$stmt->execute()) {
+            $conn->rollback();
+            return json_encode(["status" => "failed", "error" => "Could not save the entry"]);
         }
-        $stmt->bind_param("sssssd", $date, $direction, $category, $clientValue, $note, $amount);
+        if ($id === 0) {
+            $paymentId = $conn->insert_id;
+        }
+    } elseif ($id > 0) {
+        $del = $conn->prepare("DELETE FROM `daily_khata` WHERE `id` = ?");
+        $del->bind_param("i", $id);
+        if (!$del->execute()) {
+            $conn->rollback();
+            return json_encode(["status" => "failed", "error" => "Could not save the entry"]);
+        }
+        $paymentId = 0;
     }
 
-    if ($stmt->execute()) {
-        return json_encode(["status" => "success", "id" => $id > 0 ? $id : $conn->insert_id]);
+    if ($bWriteoffAllowed) {
+        if (!saveKhataWriteoff($conn, $id, $paymentId, $date, $clientValue, $note, $writeoff)) {
+            $conn->rollback();
+            return json_encode(["status" => "failed", "error" => "Could not save the write-off"]);
+        }
     }
-    return json_encode(["status" => "failed", "error" => "Could not save the entry"]);
+
+    $conn->commit();
+    return json_encode(["status" => "success", "id" => $paymentId]);
+}
+
+/**
+ * Writes, updates or clears the write-off that belongs to a client payment.
+ *
+ * The write-off is found by its `parent_id` rather than by client and date,
+ * so a client paying twice in one day keeps two separate, correct pairs.
+ * `$parentId` is 0 when the whole bill was forgiven and there is no payment
+ * row to hang it from; such a row simply stands alone.
+ */
+function saveKhataWriteoff($conn, $editingId, $parentId, $date, $client, $note, $amount) {
+    // On an edit, look for the write-off already attached to this payment.
+    $existingId = 0;
+    if ($editingId > 0) {
+        $find = $conn->prepare(
+            "SELECT id FROM `daily_khata`
+             WHERE `direction` = 'writeoff' AND (`parent_id` = ? OR `id` = ?) LIMIT 1"
+        );
+        $find->bind_param("ii", $editingId, $editingId);
+        $find->execute();
+        $row = $find->get_result()->fetch_assoc();
+        if ($row) {
+            $existingId = (int)$row["id"];
+        }
+    }
+
+    // Cleared back to nothing: the row must go, or the old figure would linger
+    // and keep settling an account that is no longer settled.
+    if ($amount <= 0) {
+        if ($existingId > 0) {
+            $del = $conn->prepare("DELETE FROM `daily_khata` WHERE `id` = ?");
+            $del->bind_param("i", $existingId);
+            return $del->execute();
+        }
+        return true;
+    }
+
+    $parent = $parentId > 0 ? $parentId : null;
+    if ($existingId > 0) {
+        $stmt = $conn->prepare(
+            "UPDATE `daily_khata` SET `entry_date` = ?, `client` = ?, `note` = ?,
+             `amount` = ?, `parent_id` = ? WHERE `id` = ?"
+        );
+        $stmt->bind_param("sssdii", $date, $client, $note, $amount, $parent, $existingId);
+        return $stmt->execute();
+    }
+
+    $stmt = $conn->prepare(
+        "INSERT INTO `daily_khata`
+         (`parent_id`, `entry_date`, `direction`, `category`, `client`, `note`, `amount`)
+         VALUES (?, ?, 'writeoff', 'client_writeoff', ?, ?, ?)"
+    );
+    $stmt->bind_param("isssd", $parent, $date, $client, $note, $amount);
+    return $stmt->execute();
 }
 
 function deleteKhataEntry() {
@@ -1272,11 +1434,16 @@ function deleteKhataEntry() {
     if ($id <= 0) {
         return json_encode(["status" => "failed", "error" => "Entry id is required"]);
     }
-    $stmt = @$conn->prepare("DELETE FROM `daily_khata` WHERE `id` = ?");
+    // Deleting a payment takes its write-off with it: the money was only let
+    // off as part of that settlement, so the client owes it again.
+    $sql = khataSupportsWriteoff($conn)
+        ? "DELETE FROM `daily_khata` WHERE `id` = ? OR `parent_id` = ?"
+        : "DELETE FROM `daily_khata` WHERE `id` = ? OR `id` = ?";
+    $stmt = @$conn->prepare($sql);
     if (!$stmt) {
         return json_encode(["status" => "failed", "error" => "Table 'daily_khata' does not exist. Please run sql/daily_khata.sql."]);
     }
-    $stmt->bind_param("i", $id);
+    $stmt->bind_param("ii", $id, $id);
     if ($stmt->execute()) {
         return json_encode(["status" => "success"]);
     }
@@ -1492,6 +1659,10 @@ function clientBalanceRows($conn, $month, $year) {
                 "paidBefore" => 0.0,
                 "billed" => 0.0,
                 "paid" => 0.0,
+                // Money let off. Settles the account exactly like a payment,
+                // but is kept apart so cash and forgiven never blur together.
+                "writtenOffBefore" => 0.0,
+                "writtenOff" => 0.0,
             ];
         }
         return $key;
@@ -1527,12 +1698,15 @@ function clientBalanceRows($conn, $month, $year) {
         }
     }
 
+    // Cash received and money let off both settle the account, so both are read
+    // here - but grouped by direction so they can be reported separately.
     $stmt = @$conn->prepare(
-        "SELECT client, entry_date, COALESCE(SUM(amount), 0) AS paid
+        "SELECT client, entry_date, direction, COALESCE(SUM(amount), 0) AS paid
          FROM daily_khata
-         WHERE direction = 'credit' AND category = 'client_payment'
+         WHERE ((direction = 'credit' AND category = 'client_payment')
+             OR (direction = 'writeoff' AND category = 'client_writeoff'))
            AND client IS NOT NULL AND client <> ''
-         GROUP BY client, entry_date"
+         GROUP BY client, entry_date, direction"
     );
     if ($stmt) {
         $stmt->execute();
@@ -1547,11 +1721,15 @@ function clientBalanceRows($conn, $month, $year) {
             if ($period > $selected) {
                 continue;
             }
+            $bWriteoff = ($row["direction"] === "writeoff");
             if ($period === $selected) {
-                $byClient[$key]["paid"] += (float)$row["paid"];
+                $field = $bWriteoff ? "writtenOff" : "paid";
             } elseif ($period >= $byClient[$key]["cutoff"]) {
-                $byClient[$key]["paidBefore"] += (float)$row["paid"];
+                $field = $bWriteoff ? "writtenOffBefore" : "paidBefore";
+            } else {
+                continue;
             }
+            $byClient[$key][$field] += (float)$row["paid"];
         }
     }
 
@@ -1561,9 +1739,12 @@ function clientBalanceRows($conn, $month, $year) {
         // struck yet, and pre-cut-off dues are deliberately not rebuilt from
         // history, so that month simply stands on its own.
         $opening = $selected >= $entry["cutoff"] ? $entry["opening"] : 0.0;
-        $od = $opening + $entry["billedBefore"] - $entry["paidBefore"];
+        // Money let off in an earlier month settled that month's dues, so it
+        // reduces OD just as a payment does - otherwise the amount forgiven
+        // would come back as a due the following month.
+        $od = $opening + $entry["billedBefore"] - $entry["paidBefore"] - $entry["writtenOffBefore"];
         $entry["od"] = $od;
-        $entry["balance"] = $od + $entry["billed"] - $entry["paid"];
+        $entry["balance"] = $od + $entry["billed"] - $entry["paid"] - $entry["writtenOff"];
         $rows[] = $entry;
     }
     usort($rows, function ($a, $b) {
@@ -1621,13 +1802,16 @@ function getTagadaSlip() {
     // Same figures the Client Ledger shows, so the two can never disagree.
     $balances = [];
     foreach (clientBalanceRows($conn, $month, $year) as $row) {
-        if ($row["od"] == 0.0 && $row["paid"] == 0.0) {
+        // A month that held only a write-off still has to come through, or the
+        // slip would show that client owing their whole bill.
+        if ($row["od"] == 0.0 && $row["paid"] == 0.0 && $row["writtenOff"] == 0.0) {
             continue;
         }
         $balances[] = [
             "client" => $row["client"],
             "od" => $row["od"],
             "paid" => $row["paid"],
+            "writtenOff" => $row["writtenOff"],
         ];
     }
 
@@ -1685,6 +1869,8 @@ function getClientLedger() {
     $paidBefore = 0.0;
     $billed = 0.0;
     $paid = 0.0;
+    $writtenOff = 0.0;
+    $writtenOffBefore = 0.0;
 
     $stmt = $conn->prepare(
         "SELECT year, month, COALESCE(SUM(total), 0) AS billed
@@ -1709,11 +1895,15 @@ function getClientLedger() {
         }
     }
 
+    // Cash received and money let off are listed together, each row carrying
+    // its own type so the statement can show them on separate lines.
     $payments = [];
     $stmt = @$conn->prepare(
-        "SELECT entry_date, note, amount
+        "SELECT entry_date, note, amount, direction
          FROM daily_khata
-         WHERE direction = 'credit' AND category = 'client_payment' AND client = ?
+         WHERE ((direction = 'credit' AND category = 'client_payment')
+             OR (direction = 'writeoff' AND category = 'client_writeoff'))
+           AND client = ?
          ORDER BY entry_date ASC, id ASC"
     );
     if ($stmt) {
@@ -1726,23 +1916,26 @@ function getClientLedger() {
             if ($period > $selected) {
                 continue;
             }
+            $bWriteoff = ($row["direction"] === "writeoff");
+            $value = (float)$row["amount"];
             if ($period === $selected) {
-                $paid += (float)$row["amount"];
+                if ($bWriteoff) { $writtenOff += $value; } else { $paid += $value; }
             } elseif ($period >= $cutoff) {
-                $paidBefore += (float)$row["amount"];
+                if ($bWriteoff) { $writtenOffBefore += $value; } else { $paidBefore += $value; }
             }
             // The history runs to the statement month and no further, so a
             // later payment can never make a past statement look settled.
             $payments[] = [
                 "date" => $row["entry_date"],
                 "note" => $row["note"],
-                "amount" => (float)$row["amount"],
+                "amount" => $value,
+                "type" => $bWriteoff ? "writeoff" : "payment",
                 "inMonth" => $period === $selected,
             ];
         }
     }
 
-    $od = $opening + $billedBefore - $paidBefore;
+    $od = $opening + $billedBefore - $paidBefore - $writtenOffBefore;
 
     return json_encode([
         "status" => "success",
@@ -1753,7 +1946,8 @@ function getClientLedger() {
         "od" => $od,
         "billed" => $billed,
         "paid" => $paid,
-        "balance" => $od + $billed - $paid,
+        "writtenOff" => $writtenOff,
+        "balance" => $od + $billed - $paid - $writtenOff,
         "payments" => $payments,
     ]);
 }

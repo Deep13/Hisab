@@ -6,6 +6,7 @@
 			<ViewSettingsItem key="od" text="OD" />
 			<ViewSettingsItem key="billed" text="Billed" />
 			<ViewSettingsItem key="paid" text="Paid" />
+			<ViewSettingsItem key="writtenOff" text="Written off" />
 		</sortItems>
 	</ViewSettingsDialog>
 </core:FragmentDefinition>

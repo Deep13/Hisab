@@ -10,7 +10,7 @@ sap.ui.define(
     "use strict";
 
     // Everything except the client name sorts as a number.
-    var NUMERIC_SORT_KEYS = ["od", "billed", "paid", "balance"];
+    var NUMERIC_SORT_KEYS = ["od", "billed", "paid", "writtenOff", "balance"];
 
     var MONTH_NAMES = [
       "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
@@ -125,15 +125,22 @@ sap.ui.define(
       _setLedgerModel: function (res) {
         res.payments = (res.payments || []).map(function (p) {
           p.amountText = money(p.amount);
+          p.isWriteoff = p.type === "writeoff";
+          p.typeLabel = p.isWriteoff ? "Write off / Less" : "Payment";
+          // Labelled in words as well as colour, because this gets printed.
+          p.highlight = p.isWriteoff ? "Warning" : (p.inMonth ? "Success" : "None");
           return p;
         });
 
         res.periodLabel = MONTH_NAMES[res.month - 1] + " " + res.year;
-        res.paymentsTitle = "Payments Received (" + res.payments.length + ")";
+        res.paymentsTitle = "Payments & Write-offs (" + res.payments.length + ")";
         res.odText = money(res.od);
         res.odState = balanceState(res.od);
         res.billedText = money(res.billed);
         res.paidText = money(res.paid);
+        res.writtenOff = res.writtenOff || 0;
+        res.writtenOffText = money(res.writtenOff);
+        res.hasWrittenOff = res.writtenOff !== 0;
         res.balanceText = money(res.balance);
         res.balanceState = balanceState(res.balance);
 
@@ -185,6 +192,7 @@ sap.ui.define(
           r.odText = money(r.od);
           r.billedText = money(r.billed);
           r.paidText = money(r.paid);
+          r.writtenOffText = money(r.writtenOff);
           r.balanceText = money(r.balance);
           r.balanceState = balanceState(r.balance);
           return r;
@@ -307,30 +315,33 @@ sap.ui.define(
           html += '<h2>' + esc(this.byId("idBalMonth").getSelectedItem().getText()) + ' ' +
             esc(this.byId("idBalYear").getSelectedKey()) + '</h2>';
           html += '<table><tr><th>Client</th><th class="num">OD</th><th class="num">Billed</th>'
-            + '<th class="num">Paid</th><th class="num">Balance</th></tr>';
+            + '<th class="num">Paid</th><th class="num">Less</th><th class="num">Balance</th></tr>';
           var t = 0;
           rows.forEach(function (r) {
             t += r.balance;
             html += '<tr><td>' + esc(r.client) + '</td><td class="num">' + r.odText
               + '</td><td class="num">' + r.billedText + '</td><td class="num">' + r.paidText
+              + '</td><td class="num">' + r.writtenOffText
               + '</td><td class="num">' + r.balanceText + '</td></tr>';
           });
-          html += '<tr class="total"><td colspan="4">Total</td><td class="num">' + money(t) + '</td></tr>';
+          html += '<tr class="total"><td colspan="5">Total</td><td class="num">' + money(t) + '</td></tr>';
           html += '</table>';
         } else {
           var d = oModel.getData();
           html += '<h1>' + esc(d.client) + '</h1>';
           html += '<h2>' + esc(d.periodLabel) + '</h2>';
           html += '<table><tr><th class="num">OD</th><th class="num">Billed</th>'
-            + '<th class="num">Paid</th><th class="num">Balance</th></tr>';
+            + '<th class="num">Paid</th><th class="num">Written Off</th>'
+            + '<th class="num">Balance</th></tr>';
           html += '<tr class="total"><td class="num">' + d.odText + '</td><td class="num">' + d.billedText
-            + '</td><td class="num">' + d.paidText + '</td><td class="num">' + d.balanceText + '</td></tr>';
+            + '</td><td class="num">' + d.paidText + '</td><td class="num">' + d.writtenOffText
+            + '</td><td class="num">' + d.balanceText + '</td></tr>';
           html += '</table>';
 
           html += '<h2 style="text-align:left;margin:18px 0 8px">' + esc(d.paymentsTitle) + '</h2>';
-          html += '<table><tr><th>Date</th><th>Remark</th><th class="num">Amount</th></tr>';
+          html += '<table><tr><th>Date</th><th>Type</th><th>Remark</th><th class="num">Amount</th></tr>';
           (d.payments || []).forEach(function (p) {
-            html += '<tr><td>' + esc(p.date) + '</td><td>' + esc(p.note)
+            html += '<tr><td>' + esc(p.date) + '</td><td>' + esc(p.typeLabel) + '</td><td>' + esc(p.note)
               + '</td><td class="num">' + p.amountText + '</td></tr>';
           });
           html += '</table>';

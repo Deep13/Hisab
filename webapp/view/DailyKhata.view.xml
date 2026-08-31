@@ -47,6 +47,11 @@
 					class="sapUiMediumMarginEnd"/>
 				<ObjectStatus title="Closing Balance" text="{khataModel>/closingText}"
 					state="{khataModel>/closingState}"/>
+				<!-- Sits after the closing balance on purpose: it explains the day,
+				     it is not part of the cash. -->
+				<ObjectStatus title="Written Off" text="{khataModel>/totalWriteoffText}"
+					state="Warning" visible="{khataModel>/hasWriteoffs}"
+					class="sapUiMediumMarginBegin"/>
 			</HBox>
 
 			<Table id="idCreditTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false"
@@ -104,6 +109,36 @@
 								<Button icon="sap-icon://edit" type="Transparent" tooltip="Edit" press="onEditEntry"/>
 								<Button icon="sap-icon://delete" type="Transparent" tooltip="Delete" press="onDeleteEntry"/>
 							</HBox>
+						</cells>
+					</ColumnListItem>
+				</items>
+			</Table>
+
+			<!-- Money clients were let off. Kept out of the two cash tables above
+			     so the credit and debit totals still reconcile against the cash
+			     box. There is no Add button: a write-off is entered on the client
+			     payment it belongs to, and cleared the same way. -->
+			<Table id="idWriteoffTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false"
+				fixedLayout="false" items="{khataModel>/writeoffs}"
+				visible="{khataModel>/hasWriteoffs}">
+				<headerToolbar>
+					<OverflowToolbar>
+						<Title text="Write off / Less  (not cash received)"/>
+						<ToolbarSpacer/>
+						<ObjectStatus text="{khataModel>/totalWriteoffText}" state="Warning"/>
+					</OverflowToolbar>
+				</headerToolbar>
+				<columns>
+					<Column width="12rem"><Label text="Against"/></Column>
+					<Column><Label text="Client / Details"/></Column>
+					<Column width="10rem" hAlign="End"><Label text="Amount"/></Column>
+				</columns>
+				<items>
+					<ColumnListItem highlight="Warning">
+						<cells>
+							<Text text="Write off / Less"/>
+							<Text text="{khataModel>details}"/>
+							<Text text="{khataModel>amount}"/>
 						</cells>
 					</ColumnListItem>
 				</items>
