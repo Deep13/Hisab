@@ -545,7 +545,7 @@ CREATE TABLE `daily_khata` (
   KEY `idx_khata_client` (`client`,`entry_date`),
   KEY `idx_khata_cat` (`direction`,`category`,`entry_date`),
   KEY `idx_khata_parent` (`parent_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=237 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=241 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -774,6 +774,10 @@ INSERT INTO `daily_khata` VALUES (233,NULL,'2026-09-02','debit','mobil',NULL,'gr
 INSERT INTO `daily_khata` VALUES (234,NULL,'2026-09-02','debit','other',NULL,'electric bill',36260.00,'2026-09-02 13:23:43');
 INSERT INTO `daily_khata` VALUES (235,NULL,'2026-09-03','credit','client_payment','sambhu cash','upi rk',5600.00,'2026-09-02 13:24:19');
 INSERT INTO `daily_khata` VALUES (236,NULL,'2026-09-03','debit','other',NULL,'innova repair',5000.00,'2026-09-02 13:24:35');
+INSERT INTO `daily_khata` VALUES (237,NULL,'2026-08-28','credit','client_payment','pankaj gala','upi',5500.00,'2026-09-02 13:33:47');
+INSERT INTO `daily_khata` VALUES (238,237,'2026-08-28','writeoff','client_writeoff','pankaj gala','upi',41.00,'2026-09-02 13:35:04');
+INSERT INTO `daily_khata` VALUES (239,NULL,'2026-09-02','credit','client_payment','pankaj gala','upi rk',100.00,'2026-09-02 13:37:58');
+INSERT INTO `daily_khata` VALUES (240,NULL,'2026-08-28','debit','other',NULL,'bhusi bholu',5500.00,'2026-09-02 13:38:14');
 /*!40000 ALTER TABLE `daily_khata` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -67491,7 +67495,6 @@ INSERT INTO `transaction` VALUES ('2026-08-27 12:20:03','25/08/2026','Shivkumar 
 INSERT INTO `transaction` VALUES ('2026-08-27 12:37:04','23/08/2026','Manoj Ram (A)','Factory 03',5,1000,'Mintu Ram',200,'Shaving',NULL,NULL,8,2026);
 INSERT INTO `transaction` VALUES ('2026-08-27 12:37:12','24/08/2026','Shahansha Bhai','Factory 03',8,640,'Mintu Ram',80,'Shaving',NULL,NULL,8,2026);
 INSERT INTO `transaction` VALUES ('2026-08-27 12:38:46','24/08/2026','Rajendra Ram','Factory 03',7,1155,'Mintu Ram',165,'Shaving',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:39:51','24/08/2026','pankaj gala','Factory 03',100,600,'',6,'Milling',NULL,NULL,8,2026);
 INSERT INTO `transaction` VALUES ('2026-08-27 12:40:00','25/08/2026','roushan jk3','Factory 03',100,400,'',4,'Milling',NULL,NULL,8,2026);
 INSERT INTO `transaction` VALUES ('2026-08-27 12:40:06','25/08/2026','Rajendra Ram','Factory 03',100,300,'',3,'Milling',NULL,NULL,8,2026);
 INSERT INTO `transaction` VALUES ('2026-08-27 12:40:17','25/08/2026','Pankaj Master','Factory 03',100,500,'',5,'Milling',NULL,NULL,8,2026);
@@ -67791,4 +67794,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-02 18:55:18
+-- Dump completed on 2026-09-02 19:10:13
