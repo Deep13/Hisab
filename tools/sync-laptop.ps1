@@ -98,9 +98,12 @@ function Import-SqlFile {
     $proc = Start-Process -FilePath (Join-Path $MysqlBin 'mysql.exe') `
         -ArgumentList $argList -RedirectStandardInput $SqlPath `
         -RedirectStandardError $errFile -NoNewWindow -Wait -PassThru
+    # Get-Content -Raw hands back $null rather than '' when the file is empty,
+    # which is the normal case: mysql writes nothing to stderr on success.
     $stderr = ''
     if (Test-Path $errFile) {
-        $stderr = (Get-Content $errFile -Raw)
+        $raw = Get-Content $errFile -Raw -ErrorAction SilentlyContinue
+        if ($raw) { $stderr = $raw }
         Remove-Item $errFile -Force -ErrorAction SilentlyContinue
     }
     if ($stderr.Trim()) { Write-Log $stderr.Trim() }

@@ -39,14 +39,17 @@ sap.ui.define(
       },
 
       _handleRouteMatched: function () {
-        var oNow = new Date();
-        var sMonth = ("0" + (oNow.getMonth() + 1)).slice(-2);
-        var sYear = oNow.getFullYear().toString();
-        if (!this.byId("idBalMonth").getSelectedKey()) {
+        // A sap.m.Select falls back to its first item, so getSelectedKey never
+        // comes back empty and cannot say whether the user has picked anything.
+        // Without a flag the guard here never passed and both tabs opened on
+        // January 2024 - the first entry in each list.
+        if (!this._bPeriodSet) {
+          this._bPeriodSet = true;
+          var oNow = new Date();
+          var sMonth = ("0" + (oNow.getMonth() + 1)).slice(-2);
+          var sYear = oNow.getFullYear().toString();
           this.byId("idBalMonth").setSelectedKey(sMonth);
           this.byId("idBalYear").setSelectedKey(sYear);
-        }
-        if (!this.byId("idLedgerMonth").getSelectedKey()) {
           this.byId("idLedgerMonth").setSelectedKey(sMonth);
           this.byId("idLedgerYear").setSelectedKey(sYear);
         }
