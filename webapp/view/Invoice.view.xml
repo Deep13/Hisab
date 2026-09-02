@@ -112,7 +112,7 @@
 			<HBox class="higlight" >
 			<VBox alignItems="Start" alignContent="Start" justifyContent="Start" class="sapUiLargeMarginBegin" width="70%">
 			<Title level="H1" titleStyle="H4" text="{viewModel>desc}"/>
-			<Title level="H1" titleStyle="H4" text="{viewModel>MillingLot} Lot"/>
+			<Title level="H1" titleStyle="H4" text="{viewModel>millingLot} Lot"/>
 			</VBox>
 			<VBox alignItems="Center" alignContent="Center" justifyContent="Center" width="30%">
 					<Title level="H1" titleStyle="H4" text="{viewModel>total}"/>

@@ -18,7 +18,7 @@
 			</Bar>
 		</customHeader>
 		<content>
-			<MessageStrip id="idNoOpeningStrip" visible="false"
+			<MessageStrip id="idNoOpeningStrip" visible="false" width="auto"
 				text="No opening cash balance has been set yet, so the carried-forward figure counts every machine expense ever recorded and will look wrong. Open Opening Balances and set the day you are starting from."
 				type="Warning" showIcon="true" class="sapUiSmallMargin"/>
 
@@ -54,8 +54,8 @@
 					class="sapUiMediumMarginBegin"/>
 			</HBox>
 
-			<Table id="idCreditTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false"
-				fixedLayout="false" items="{khataModel>/credits}">
+			<Table id="idCreditTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false" width="auto"
+				fixedLayout="true" items="{khataModel>/credits}">
 				<headerToolbar>
 					<OverflowToolbar>
 						<Title text="Credit  (money in)"/>
@@ -84,8 +84,8 @@
 				</items>
 			</Table>
 
-			<Table id="idDebitTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false"
-				fixedLayout="false" items="{khataModel>/debits}">
+			<Table id="idDebitTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false" width="auto"
+				fixedLayout="true" items="{khataModel>/debits}">
 				<headerToolbar>
 					<OverflowToolbar>
 						<Title text="Debit  (money out)"/>
@@ -118,8 +118,8 @@
 			     so the credit and debit totals still reconcile against the cash
 			     box. There is no Add button: a write-off is entered on the client
 			     payment it belongs to, and cleared the same way. -->
-			<Table id="idWriteoffTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false"
-				fixedLayout="false" items="{khataModel>/writeoffs}"
+			<Table id="idWriteoffTable" class="sapUiSmallMargin sapUiSizeCompact" inset="false" width="auto"
+				fixedLayout="true" items="{khataModel>/writeoffs}"
 				visible="{khataModel>/hasWriteoffs}">
 				<headerToolbar>
 					<OverflowToolbar>
@@ -132,6 +132,9 @@
 					<Column width="12rem"><Label text="Against"/></Column>
 					<Column><Label text="Client / Details"/></Column>
 					<Column width="10rem" hAlign="End"><Label text="Amount"/></Column>
+					<!-- Matches the action column on the two tables above, so the
+					     Amount figures line up down the page. -->
+					<Column width="6rem" hAlign="Center"><Label text=""/></Column>
 				</columns>
 				<items>
 					<ColumnListItem highlight="Warning">
@@ -139,6 +142,7 @@
 							<Text text="Write off / Less"/>
 							<Text text="{khataModel>details}"/>
 							<Text text="{khataModel>amount}"/>
+							<Text text=""/>
 						</cells>
 					</ColumnListItem>
 				</items>

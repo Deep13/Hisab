@@ -102,7 +102,11 @@ sap.ui.define([
           Object.keys(oBlock[sType]).forEach(function (sRate) {
             oLines[sType].push({
               desc: oBlock[sType][sRate] + " X " + sRate,
-              total: sRate * oBlock[sType][sRate]
+              total: sRate * oBlock[sType][sRate],
+              // The invoice prints the lot count under each milling line, and
+              // that line binds against the line itself - so the figure has to
+              // travel on the line, not just on the factory block.
+              millingLot: millingLot
             });
             oBlock[sType + "Total"] += sRate * oBlock[sType][sRate];
           });
