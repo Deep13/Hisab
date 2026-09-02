@@ -232,10 +232,10 @@ INSERT INTO `client_opening` VALUES ('Manzur Bhai',2360.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('Mashudhan Ram',0.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('Master',0.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('Master Jee CASH',0.00,'2026-08-01');
-INSERT INTO `client_opening` VALUES ('MD Taquib',18445.00,'2026-08-01');
+INSERT INTO `client_opening` VALUES ('MD Taquib',18345.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('MD Zahid',16951.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('Mehboob Bhai',0.00,'2026-08-01');
-INSERT INTO `client_opening` VALUES ('Mehdi Ram',2350.00,'2026-08-01');
+INSERT INTO `client_opening` VALUES ('Mehdi Ram',700.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('mehtab bhai',0.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('Mithlesh Ram[Vivek]',0.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('Mithun Ram',13059.00,'2026-08-01');
@@ -292,7 +292,7 @@ INSERT INTO `client_opening` VALUES ('Rahul Kumar',21893.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('Rahul Manoj6f',0.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('Rahul _Umesh',0.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('rahul(gandhi)',0.00,'2026-08-01');
-INSERT INTO `client_opening` VALUES ('Raj Kumar',3040.00,'2026-08-01');
+INSERT INTO `client_opening` VALUES ('Raj Kumar',1140.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('Raj-Wallee Ram',0.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('Raja CASH',3040.00,'2026-08-01');
 INSERT INTO `client_opening` VALUES ('Rajballam Ram',0.00,'2026-08-01');
@@ -545,7 +545,7 @@ CREATE TABLE `daily_khata` (
   KEY `idx_khata_client` (`client`,`entry_date`),
   KEY `idx_khata_cat` (`direction`,`category`,`entry_date`),
   KEY `idx_khata_parent` (`parent_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=214 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=225 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -754,6 +754,15 @@ INSERT INTO `daily_khata` VALUES (210,NULL,'2026-08-31','credit','client_payment
 INSERT INTO `daily_khata` VALUES (211,151,'2026-08-19','writeoff','client_writeoff','Pradip Natu','cash',5.00,'2026-09-01 09:19:01');
 INSERT INTO `daily_khata` VALUES (212,195,'2026-08-30','writeoff','client_writeoff','Govinda','CASH',55.00,'2026-09-01 10:22:37');
 INSERT INTO `daily_khata` VALUES (213,185,'2026-08-27','writeoff','client_writeoff','Naresh cash','CASH',24.00,'2026-09-01 10:35:05');
+INSERT INTO `daily_khata` VALUES (216,NULL,'2026-09-01','credit','client_payment','Ramanand (CASH)','cash',1100.00,'2026-09-02 08:27:34');
+INSERT INTO `daily_khata` VALUES (217,NULL,'2026-08-31','debit','other',NULL,'nepal da',500.00,'2026-09-02 08:27:56');
+INSERT INTO `daily_khata` VALUES (218,NULL,'2026-08-31','debit','other',NULL,'newspaper',320.00,'2026-09-02 08:28:12');
+INSERT INTO `daily_khata` VALUES (219,NULL,'2026-09-01','debit','other',NULL,'albester',4600.00,'2026-09-02 08:28:34');
+INSERT INTO `daily_khata` VALUES (220,NULL,'2026-09-01','debit','other',NULL,'binay shav f3',500.00,'2026-09-02 08:28:49');
+INSERT INTO `daily_khata` VALUES (221,NULL,'2026-09-01','debit','other',NULL,'tamba',480.00,'2026-09-02 08:28:59');
+INSERT INTO `daily_khata` VALUES (222,NULL,'2026-09-01','debit','other',NULL,'tea',20.00,'2026-09-02 08:29:11');
+INSERT INTO `daily_khata` VALUES (223,NULL,'2026-09-01','debit','other',NULL,'gharami',3500.00,'2026-09-02 08:29:21');
+INSERT INTO `daily_khata` VALUES (224,NULL,'2026-09-01','debit','other',NULL,'boring mistri',2500.00,'2026-09-02 08:29:35');
 /*!40000 ALTER TABLE `daily_khata` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -67452,27 +67461,27 @@ INSERT INTO `transaction` VALUES ('2026-08-27 12:16:33','24/08/2026','Shivkumar 
 INSERT INTO `transaction` VALUES ('2026-08-27 12:16:38','24/08/2026','Shivkumar Ram[S.K]','Factory 03',7,238,'Ranjit Ram (Buff)',34,'Buffing',NULL,NULL,8,2026);
 INSERT INTO `transaction` VALUES ('2026-08-27 12:16:42','24/08/2026','Shivkumar Ram[S.K]','Factory 03',3,120,'Ranjit Ram (Buff)',40,'Buffing',NULL,NULL,8,2026);
 INSERT INTO `transaction` VALUES ('2026-08-27 12:16:51','27/08/2026','Shahansha Bhai','Factory 03',15,1500,'Ranjit Ram (Buff)',100,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:17:17','23/08/2026','Manoj Ram (A)','Factory 03',5,500,'Nunu Ram',100,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:17:24','24/08/2026','Shahansha Bhai','Factory 03',8,800,'Nunu Ram',100,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:17:32','25/08/2026','Manoj Ram (A)','Factory 03',10,2100,'Nunu Ram',210,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:17:45','26/08/2026','Shivkumar Ram','Factory 03',15,1500,'Nunu Ram',100,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:17:54','27/08/2026','Rajendra Ram','Factory 03',10,1170,'Nunu Ram',117,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:17:57','27/08/2026','Rajendra Ram','Factory 03',15,195,'Nunu Ram',13,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:18:20','27/08/2026','Shahansha Bhai','Factory 03',15,465,'Sanjit Ram',31,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:18:27','27/08/2026','Rajendra Ram','Factory 03',7,1057,'Sanjit Ram',151,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:18:43','23/08/2026','Manoj Ram (A)','Factory 03',5,550,'Gajendra Ram',110,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:18:50','24/08/2026','Shahansha Bhai','Factory 03',8,696,'Gajendra Ram',87,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:18:56','24/08/2026','Manoj Ram (A)','Factory 03',10,1000,'Gajendra Ram',100,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:19:01','25/08/2026','Manoj Ram (A)','Factory 03',10,1000,'Gajendra Ram',100,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:19:08','25/08/2026','Shivkumar Ram','Factory 03',15,1050,'Gajendra Ram',70,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:19:13','26/08/2026','Shivkumar Ram','Factory 03',15,1125,'Gajendra Ram',75,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:19:21','27/08/2026','Rajendra Ram','Factory 03',10,1250,'Gajendra Ram',125,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:19:39','22/08/2026','Manoj Ram (A)','Factory 03',5,830,'Rameshwar Ram',166,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:19:47','24/08/2026','Manoj Ram (A)','Factory 03',10,1300,'Rameshwar Ram',130,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:20:03','25/08/2026','Shivkumar Ram','Factory 03',15,1050,'Rameshwar Ram',70,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:37:04','23/08/2026','Manoj Ram (A)','Factory 03',5,1000,'Mintu Ram',200,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:37:12','24/08/2026','Shahansha Bhai','Factory 03',8,640,'Mintu Ram',80,'Buffing',NULL,NULL,8,2026);
-INSERT INTO `transaction` VALUES ('2026-08-27 12:38:46','24/08/2026','Rajendra Ram','Factory 03',7,1155,'Mintu Ram',165,'Buffing',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:17:17','23/08/2026','Manoj Ram (A)','Factory 03',5,500,'Nunu Ram',100,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:17:24','24/08/2026','Shahansha Bhai','Factory 03',8,800,'Nunu Ram',100,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:17:32','25/08/2026','Manoj Ram (A)','Factory 03',10,2100,'Nunu Ram',210,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:17:45','26/08/2026','Shivkumar Ram','Factory 03',15,1500,'Nunu Ram',100,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:17:54','27/08/2026','Rajendra Ram','Factory 03',10,1170,'Nunu Ram',117,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:17:57','27/08/2026','Rajendra Ram','Factory 03',15,195,'Nunu Ram',13,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:18:20','27/08/2026','Shahansha Bhai','Factory 03',15,465,'Sanjit Ram',31,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:18:27','27/08/2026','Rajendra Ram','Factory 03',7,1057,'Sanjit Ram',151,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:18:43','23/08/2026','Manoj Ram (A)','Factory 03',5,550,'Gajendra Ram',110,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:18:50','24/08/2026','Shahansha Bhai','Factory 03',8,696,'Gajendra Ram',87,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:18:56','24/08/2026','Manoj Ram (A)','Factory 03',10,1000,'Gajendra Ram',100,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:19:01','25/08/2026','Manoj Ram (A)','Factory 03',10,1000,'Gajendra Ram',100,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:19:08','25/08/2026','Shivkumar Ram','Factory 03',15,1050,'Gajendra Ram',70,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:19:13','26/08/2026','Shivkumar Ram','Factory 03',15,1125,'Gajendra Ram',75,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:19:21','27/08/2026','Rajendra Ram','Factory 03',10,1250,'Gajendra Ram',125,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:19:39','22/08/2026','Manoj Ram (A)','Factory 03',5,830,'Rameshwar Ram',166,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:19:47','24/08/2026','Manoj Ram (A)','Factory 03',10,1300,'Rameshwar Ram',130,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:20:03','25/08/2026','Shivkumar Ram','Factory 03',15,1050,'Rameshwar Ram',70,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:37:04','23/08/2026','Manoj Ram (A)','Factory 03',5,1000,'Mintu Ram',200,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:37:12','24/08/2026','Shahansha Bhai','Factory 03',8,640,'Mintu Ram',80,'Shaving',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-08-27 12:38:46','24/08/2026','Rajendra Ram','Factory 03',7,1155,'Mintu Ram',165,'Shaving',NULL,NULL,8,2026);
 INSERT INTO `transaction` VALUES ('2026-08-27 12:39:51','24/08/2026','pankaj gala','Factory 03',100,600,'',6,'Milling',NULL,NULL,8,2026);
 INSERT INTO `transaction` VALUES ('2026-08-27 12:40:00','25/08/2026','roushan jk3','Factory 03',100,400,'',4,'Milling',NULL,NULL,8,2026);
 INSERT INTO `transaction` VALUES ('2026-08-27 12:40:06','25/08/2026','Rajendra Ram','Factory 03',100,300,'',3,'Milling',NULL,NULL,8,2026);
@@ -67777,4 +67786,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-01 18:28:44
+-- Dump completed on 2026-09-02 14:00:09
