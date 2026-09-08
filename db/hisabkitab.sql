@@ -545,7 +545,7 @@ CREATE TABLE `daily_khata` (
   KEY `idx_khata_client` (`client`,`entry_date`),
   KEY `idx_khata_cat` (`direction`,`category`,`entry_date`),
   KEY `idx_khata_parent` (`parent_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=255 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=302 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -792,6 +792,52 @@ INSERT INTO `daily_khata` VALUES (251,NULL,'2026-09-03','debit','other',NULL,'el
 INSERT INTO `daily_khata` VALUES (252,NULL,'2026-09-03','debit','other',NULL,'sanoj',1000.00,'2026-09-03 12:57:33');
 INSERT INTO `daily_khata` VALUES (253,NULL,'2026-09-03','debit','other',NULL,'fan mart',1200.00,'2026-09-03 12:58:09');
 INSERT INTO `daily_khata` VALUES (254,NULL,'2026-09-03','debit','other',NULL,'tutu',200.00,'2026-09-03 13:18:46');
+INSERT INTO `daily_khata` VALUES (255,NULL,'2026-09-05','credit','client_payment','Pankaj Master','cash + upi',20000.00,'2026-09-05 07:15:14');
+INSERT INTO `daily_khata` VALUES (256,NULL,'2026-09-04','credit','client_payment','Bhagrath Ram','CASH',5000.00,'2026-09-05 12:08:48');
+INSERT INTO `daily_khata` VALUES (257,256,'2026-09-04','writeoff','client_writeoff','Bhagrath Ram','CASH',10.00,'2026-09-05 12:08:48');
+INSERT INTO `daily_khata` VALUES (258,NULL,'2026-09-04','credit','client_payment','Sumit(cash)','CASH',700.00,'2026-09-05 12:09:07');
+INSERT INTO `daily_khata` VALUES (259,NULL,'2026-09-04','credit','client_payment','nahaid bhai','UPI RK',8940.00,'2026-09-05 12:09:25');
+INSERT INTO `daily_khata` VALUES (260,NULL,'2026-09-04','credit','client_payment','raju bhai','UPI RK',1060.00,'2026-09-05 12:09:38');
+INSERT INTO `daily_khata` VALUES (261,NULL,'2026-09-04','credit','client_payment','Bindeshwar Ram','CASH',1900.00,'2026-09-05 12:09:54');
+INSERT INTO `daily_khata` VALUES (262,NULL,'2026-09-04','debit','other',NULL,'BOTA BHAI',170.00,'2026-09-05 12:10:21');
+INSERT INTO `daily_khata` VALUES (263,NULL,'2026-09-04','debit','v_belt',NULL,'DHOL',1500.00,'2026-09-05 12:10:33');
+INSERT INTO `daily_khata` VALUES (264,NULL,'2026-09-04','debit','other',NULL,'HOME',1000.00,'2026-09-05 12:10:40');
+INSERT INTO `daily_khata` VALUES (265,NULL,'2026-09-04','debit','bhussi',NULL,'IRFAN',4000.00,'2026-09-05 12:10:51');
+INSERT INTO `daily_khata` VALUES (267,NULL,'2026-09-03','debit','other',NULL,'BABLU',500.00,'2026-09-05 12:17:14');
+INSERT INTO `daily_khata` VALUES (268,NULL,'2026-09-05','credit','client_payment','Abhinash Ram','cash',1300.00,'2026-09-08 10:43:52');
+INSERT INTO `daily_khata` VALUES (269,NULL,'2026-09-05','debit','other',NULL,'plumber',500.00,'2026-09-08 10:44:07');
+INSERT INTO `daily_khata` VALUES (270,NULL,'2026-09-05','debit','other',NULL,'tamba',1500.00,'2026-09-08 10:44:23');
+INSERT INTO `daily_khata` VALUES (271,NULL,'2026-09-05','debit','other',NULL,'irfan sabri',4000.00,'2026-09-08 10:44:33');
+INSERT INTO `daily_khata` VALUES (272,NULL,'2026-09-05','debit','other',NULL,'RB HAJIPUR RAKESH',15000.00,'2026-09-08 10:44:50');
+INSERT INTO `daily_khata` VALUES (273,NULL,'2026-09-05','debit','other',NULL,'PREK ETC',200.00,'2026-09-08 10:45:01');
+INSERT INTO `daily_khata` VALUES (274,NULL,'2026-09-05','debit','other',NULL,'RAPIDO LUNCH',100.00,'2026-09-08 10:45:10');
+INSERT INTO `daily_khata` VALUES (275,NULL,'2026-09-05','debit','other',NULL,'GHARAMI',2800.00,'2026-09-08 10:45:22');
+INSERT INTO `daily_khata` VALUES (276,NULL,'2026-09-05','debit','other',NULL,'NEPAL DA',5000.00,'2026-09-08 10:45:32');
+INSERT INTO `daily_khata` VALUES (277,NULL,'2026-09-05','debit','other',NULL,'TEA',30.00,'2026-09-08 10:45:39');
+INSERT INTO `daily_khata` VALUES (278,NULL,'2026-09-06','credit','client_payment','Dilip Ram Cash','F3 DILIP',600.00,'2026-09-08 10:46:10');
+INSERT INTO `daily_khata` VALUES (279,NULL,'2026-09-06','credit','client_payment','Indeshwar Ram','CASH',6600.00,'2026-09-08 10:52:48');
+INSERT INTO `daily_khata` VALUES (280,NULL,'2026-09-06','credit','client_payment','Bobby Da','CASH',10000.00,'2026-09-08 10:53:03');
+INSERT INTO `daily_khata` VALUES (281,NULL,'2026-09-06','credit','client_payment','sahnabaj','UPI',15000.00,'2026-09-08 10:53:16');
+INSERT INTO `daily_khata` VALUES (282,NULL,'2026-09-06','debit','other',NULL,'BABLU DA',3500.00,'2026-09-08 10:53:28');
+INSERT INTO `daily_khata` VALUES (283,NULL,'2026-09-06','debit','other',NULL,'LABOUR PAYMENT',33900.00,'2026-09-08 10:54:18');
+INSERT INTO `daily_khata` VALUES (284,NULL,'2026-09-06','debit','other',NULL,'PLUMBER KARTIK',5000.00,'2026-09-08 10:54:38');
+INSERT INTO `daily_khata` VALUES (285,NULL,'2026-09-06','debit','other',NULL,'CASTING',500.00,'2026-09-08 10:55:05');
+INSERT INTO `daily_khata` VALUES (286,NULL,'2026-09-06','debit','other',NULL,'PLUMBER FOOD',500.00,'2026-09-08 10:55:15');
+INSERT INTO `daily_khata` VALUES (287,NULL,'2026-09-06','debit','other',NULL,'SOCKET',500.00,'2026-09-08 10:55:53');
+INSERT INTO `daily_khata` VALUES (288,NULL,'2026-09-07','credit','client_payment','Lalbabu Ram','CASH',7400.00,'2026-09-08 10:56:24');
+INSERT INTO `daily_khata` VALUES (289,NULL,'2026-09-07','credit','client_payment','Mithun Ram','UPI RK',15964.00,'2026-09-08 10:56:42');
+INSERT INTO `daily_khata` VALUES (290,NULL,'2026-09-07','credit','client_payment','Subodh Ram','UPI RK',7525.00,'2026-09-08 10:56:56');
+INSERT INTO `daily_khata` VALUES (291,NULL,'2026-09-07','credit','client_payment','Govinda f4','CASH',1100.00,'2026-09-08 10:57:14');
+INSERT INTO `daily_khata` VALUES (292,NULL,'2026-09-07','debit','other',NULL,'PLUMBER',7000.00,'2026-09-08 10:57:25');
+INSERT INTO `daily_khata` VALUES (293,NULL,'2026-09-07','debit','other',NULL,'PLUMBER',1000.00,'2026-09-08 10:57:35');
+INSERT INTO `daily_khata` VALUES (294,NULL,'2026-09-07','debit','other',NULL,'PAPPU',500.00,'2026-09-08 10:57:43');
+INSERT INTO `daily_khata` VALUES (295,NULL,'2026-09-07','debit','other',NULL,'MANOJ BUFF',500.00,'2026-09-08 10:57:52');
+INSERT INTO `daily_khata` VALUES (296,NULL,'2026-09-08','credit','client_payment','Arvind (Apna)','CASH',6630.00,'2026-09-08 10:58:27');
+INSERT INTO `daily_khata` VALUES (297,NULL,'2026-09-08','credit','client_payment','Rajesh ram','CASH',5919.00,'2026-09-08 10:58:37');
+INSERT INTO `daily_khata` VALUES (298,NULL,'2026-09-08','credit','client_payment','Anoj kumar','CASH',3689.00,'2026-09-08 10:58:46');
+INSERT INTO `daily_khata` VALUES (299,NULL,'2026-09-08','credit','client_payment','Pappu Roy','UPI RK',10255.00,'2026-09-08 10:59:02');
+INSERT INTO `daily_khata` VALUES (300,NULL,'2026-09-08','credit','client_payment','Rajendra Ram','CASH',44600.00,'2026-09-08 10:59:17');
+INSERT INTO `daily_khata` VALUES (301,300,'2026-09-08','writeoff','client_writeoff','Rajendra Ram','CASH',33.00,'2026-09-08 10:59:17');
 /*!40000 ALTER TABLE `daily_khata` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -67726,6 +67772,24 @@ INSERT INTO `transaction` VALUES ('2026-09-01 09:47:42','31/08/2026','Bobby Da',
 INSERT INTO `transaction` VALUES ('2026-09-01 09:47:47','31/08/2026','Istiyaque ','Factory 04',100,600,'',5,'Softening',NULL,NULL,8,2026);
 INSERT INTO `transaction` VALUES ('2026-09-03 11:21:21','21/08/2026','Shivkumar Ram','Factory 03',100,600,'',6,'Milling',NULL,NULL,8,2026);
 INSERT INTO `transaction` VALUES ('2026-09-03 12:02:22','21/08/2026','Shivkumar Ram','Factory 03',100,600,'',5,'Softening',NULL,NULL,8,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:43:26','01/09/2026','Pappu Roy','Factory 04',4,1800,'Pawan Ram',450,'Buffing',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:43:44','01/09/2026','sahnabaj','Factory 04',3,1455,'Pawan Ram',485,'Buffing',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:44:01','02/09/2026','sahnabaj','Factory 04',3,360,'Pawan Ram',120,'Buffing',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:44:24','05/09/2026','Pappu Roy','Factory 04',4,1772,'Pawan Ram',443,'Buffing',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:44:28','05/09/2026','Pappu Roy','Factory 04',6,102,'Pawan Ram',17,'Buffing',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:44:58','01/09/2026','Pappu Roy','Factory 04',4,1268,'Manoj Ram buff',317,'Buffing',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:45:07','01/09/2026','Pappu Roy','Factory 04',6,54,'Manoj Ram buff',9,'Buffing',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:45:17','02/09/2026','sahnabaj','Factory 04',5,250,'Manoj Ram buff',50,'Buffing',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:45:37','02/09/2026','sahnabaj','Factory 04',7,42,'Manoj Ram buff',6,'Buffing',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:45:47','05/09/2026','Pappu Roy','Factory 04',4,1000,'Manoj Ram buff',250,'Buffing',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:45:50','05/09/2026','Pappu Roy','Factory 04',6,60,'Manoj Ram buff',10,'Buffing',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:46:05','05/09/2026','Istiyaque ','Factory 04',2.75,286,'Manoj Ram buff',104,'Buffing',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:47:52','02/09/2026','sahnabaj','Factory 04',100,600,'',6,'Milling',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:48:04','04/09/2026','sahnabaj','Factory 04',100,400,'',4,'Milling',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:48:17','04/09/2026','Pappu Roy','Factory 04',100,300,'',3,'Milling',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:48:28','04/09/2026','sahnabaj','Factory 04',100,300,'',3,'Milling',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:48:43','04/09/2026','harindar nag','Factory 04',100,600,'',6,'Milling',NULL,NULL,9,2026);
+INSERT INTO `transaction` VALUES ('2026-09-08 06:48:50','04/09/2026','Istiyaque ','Factory 04',100,300,'',3,'Milling',NULL,NULL,9,2026);
 /*!40000 ALTER TABLE `transaction` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -67810,4 +67874,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-03 18:49:31
+-- Dump completed on 2026-09-08 16:37:18
