@@ -545,7 +545,7 @@ CREATE TABLE `daily_khata` (
   KEY `idx_khata_client` (`client`,`entry_date`),
   KEY `idx_khata_cat` (`direction`,`category`,`entry_date`),
   KEY `idx_khata_parent` (`parent_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=302 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=326 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -838,6 +838,30 @@ INSERT INTO `daily_khata` VALUES (298,NULL,'2026-09-08','credit','client_payment
 INSERT INTO `daily_khata` VALUES (299,NULL,'2026-09-08','credit','client_payment','Pappu Roy','UPI RK',10255.00,'2026-09-08 10:59:02');
 INSERT INTO `daily_khata` VALUES (300,NULL,'2026-09-08','credit','client_payment','Rajendra Ram','CASH',44600.00,'2026-09-08 10:59:17');
 INSERT INTO `daily_khata` VALUES (301,300,'2026-09-08','writeoff','client_writeoff','Rajendra Ram','CASH',33.00,'2026-09-08 10:59:17');
+INSERT INTO `daily_khata` VALUES (302,NULL,'2026-09-08','debit','other',NULL,'WATER PUMP WASH',5000.00,'2026-09-08 12:29:26');
+INSERT INTO `daily_khata` VALUES (303,NULL,'2026-09-09','credit','client_payment','Ibrar Bhai','upi rk',21600.00,'2026-09-09 10:12:34');
+INSERT INTO `daily_khata` VALUES (304,303,'2026-09-09','writeoff','client_writeoff','Ibrar Bhai','upi rk',59.00,'2026-09-09 10:12:34');
+INSERT INTO `daily_khata` VALUES (305,NULL,'2026-09-08','debit','other',NULL,'sanoj',9000.00,'2026-09-09 12:35:36');
+INSERT INTO `daily_khata` VALUES (306,NULL,'2026-09-08','debit','other',NULL,'water pump',23050.00,'2026-09-09 12:35:46');
+INSERT INTO `daily_khata` VALUES (307,NULL,'2026-09-08','debit','other',NULL,'electric tutu',3000.00,'2026-09-09 12:36:04');
+INSERT INTO `daily_khata` VALUES (308,NULL,'2026-09-08','debit','other',NULL,'home',2100.00,'2026-09-09 12:36:12');
+INSERT INTO `daily_khata` VALUES (309,NULL,'2026-09-08','debit','bhussi',NULL,'irfan',5000.00,'2026-09-09 12:36:24');
+INSERT INTO `daily_khata` VALUES (310,NULL,'2026-09-08','debit','other',NULL,'kamlesh f4',500.00,'2026-09-09 12:36:37');
+INSERT INTO `daily_khata` VALUES (311,NULL,'2026-09-08','debit','other',NULL,'mahesh buff',500.00,'2026-09-09 12:36:46');
+INSERT INTO `daily_khata` VALUES (312,NULL,'2026-09-08','debit','other',NULL,'bota electric',500.00,'2026-09-09 12:36:56');
+INSERT INTO `daily_khata` VALUES (313,NULL,'2026-09-08','debit','other',NULL,'kartin boring',10500.00,'2026-09-09 12:37:15');
+INSERT INTO `daily_khata` VALUES (314,NULL,'2026-09-08','debit','other',NULL,'pump parts',4540.00,'2026-09-09 12:37:32');
+INSERT INTO `daily_khata` VALUES (315,NULL,'2026-09-09','debit','other',NULL,'mutton',1500.00,'2026-09-09 12:37:50');
+INSERT INTO `daily_khata` VALUES (316,NULL,'2026-09-09','debit','other',NULL,'dhol saaf',200.00,'2026-09-09 12:38:02');
+INSERT INTO `daily_khata` VALUES (317,NULL,'2026-09-09','debit','other',NULL,'nepal da',1000.00,'2026-09-09 12:38:11');
+INSERT INTO `daily_khata` VALUES (318,NULL,'2026-09-09','debit','other',NULL,'saan pathar',2000.00,'2026-09-09 12:38:19');
+INSERT INTO `daily_khata` VALUES (319,NULL,'2026-09-09','credit','client_payment','Shahansha Bhai','upi rk',37900.00,'2026-09-09 12:41:46');
+INSERT INTO `daily_khata` VALUES (320,319,'2026-09-09','writeoff','client_writeoff','Shahansha Bhai','upi rk',62.00,'2026-09-09 12:41:46');
+INSERT INTO `daily_khata` VALUES (321,NULL,'2026-09-09','credit','client_payment','Shahid Bhai','upi rk',15500.00,'2026-09-09 12:42:10');
+INSERT INTO `daily_khata` VALUES (322,321,'2026-09-09','writeoff','client_writeoff','Shahid Bhai','upi rk',49.00,'2026-09-09 12:42:10');
+INSERT INTO `daily_khata` VALUES (323,NULL,'2026-09-09','credit','client_payment','Akbar s','upi rk',3900.00,'2026-09-09 12:42:28');
+INSERT INTO `daily_khata` VALUES (324,323,'2026-09-09','writeoff','client_writeoff','Akbar s','upi rk',5.00,'2026-09-09 12:42:28');
+INSERT INTO `daily_khata` VALUES (325,NULL,'2026-09-09','credit','client_payment','Binod Ram[D.K]','cash',3673.00,'2026-09-09 13:05:22');
 /*!40000 ALTER TABLE `daily_khata` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -67874,4 +67898,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-08 16:37:18
+-- Dump completed on 2026-09-09 18:47:53
