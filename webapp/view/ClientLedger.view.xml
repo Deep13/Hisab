@@ -27,8 +27,10 @@
 									<core:Item key="{ClientModel>client}" text="{ClientModel>client}"/>
 								</ComboBox>
 							</VBox>
+							<!-- From and To both default to the current month, so the
+							     statement opens as a single month unless widened. -->
 							<VBox class="sapUiSmallMarginEnd">
-								<Label text="Month" design="Bold"/>
+								<Label text="From Month" design="Bold"/>
 								<Select id="idLedgerMonth">
 									<core:Item key="01" text="January"/>
 									<core:Item key="02" text="February"/>
@@ -45,8 +47,34 @@
 								</Select>
 							</VBox>
 							<VBox class="sapUiSmallMarginEnd">
-								<Label text="Year" design="Bold"/>
+								<Label text="From Year" design="Bold"/>
 								<Select id="idLedgerYear">
+									<core:Item key="2024" text="2024"/>
+									<core:Item key="2025" text="2025"/>
+									<core:Item key="2026" text="2026"/>
+									<core:Item key="2027" text="2027"/>
+								</Select>
+							</VBox>
+							<VBox class="sapUiSmallMarginEnd">
+								<Label text="To Month" design="Bold"/>
+								<Select id="idLedgerToMonth">
+									<core:Item key="01" text="January"/>
+									<core:Item key="02" text="February"/>
+									<core:Item key="03" text="March"/>
+									<core:Item key="04" text="April"/>
+									<core:Item key="05" text="May"/>
+									<core:Item key="06" text="June"/>
+									<core:Item key="07" text="July"/>
+									<core:Item key="08" text="August"/>
+									<core:Item key="09" text="September"/>
+									<core:Item key="10" text="October"/>
+									<core:Item key="11" text="November"/>
+									<core:Item key="12" text="December"/>
+								</Select>
+							</VBox>
+							<VBox class="sapUiSmallMarginEnd">
+								<Label text="To Year" design="Bold"/>
+								<Select id="idLedgerToYear">
 									<core:Item key="2024" text="2024"/>
 									<core:Item key="2025" text="2025"/>
 									<core:Item key="2026" text="2026"/>

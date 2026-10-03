@@ -1009,7 +1009,7 @@ function saveNotice() {
 function khataCategories() {
     return [
         "credit" => ["client_payment", "thaktha_bhara", "other"],
-        "debit" => ["churi", "buff_paper", "mobil", "bhussi", "v_belt", "other"],
+        "debit" => ["churi", "buff_paper", "mobil", "bhussi", "v_belt", "tamba", "other"],
         "writeoff" => ["client_writeoff"],
     ];
 }
@@ -1218,6 +1218,10 @@ function saveKhataEntry() {
     $id = (int)($obj->id ?? 0);
     // Money the client was let off, entered alongside what they actually paid.
     $writeoff = (float)($obj->writeoff ?? 0);
+    // The write-off row being edited, when the user opened the entry from the
+    // write-off list rather than from its payment. A whole bill forgiven has
+    // no payment row at all, so without this there would be no way back to it.
+    $writeoffId = (int)($obj->writeoffId ?? 0);
 
     if ($date === '') {
         return json_encode(["status" => "failed", "error" => "Date is required"]);
@@ -1348,7 +1352,7 @@ function saveKhataEntry() {
     }
 
     if ($bWriteoffAllowed) {
-        if (!saveKhataWriteoff($conn, $id, $paymentId, $date, $clientValue, $note, $writeoff)) {
+        if (!saveKhataWriteoff($conn, $writeoffId, $id, $paymentId, $date, $clientValue, $note, $writeoff)) {
             $conn->rollback();
             return json_encode(["status" => "failed", "error" => "Could not save the write-off"]);
         }
@@ -1366,15 +1370,17 @@ function saveKhataEntry() {
  * `$parentId` is 0 when the whole bill was forgiven and there is no payment
  * row to hang it from; such a row simply stands alone.
  */
-function saveKhataWriteoff($conn, $editingId, $parentId, $date, $client, $note, $amount) {
-    // On an edit, look for the write-off already attached to this payment.
-    $existingId = 0;
-    if ($editingId > 0) {
+function saveKhataWriteoff($conn, $writeoffId, $editingId, $parentId, $date, $client, $note, $amount) {
+    // The caller may name the write-off row outright - it does when the entry
+    // was opened from the write-off list. Otherwise find the one hanging off
+    // the payment being edited.
+    $existingId = $writeoffId;
+    if ($existingId === 0 && $editingId > 0) {
         $find = $conn->prepare(
             "SELECT id FROM `daily_khata`
-             WHERE `direction` = 'writeoff' AND (`parent_id` = ? OR `id` = ?) LIMIT 1"
+             WHERE `direction` = 'writeoff' AND `parent_id` = ? LIMIT 1"
         );
-        $find->bind_param("ii", $editingId, $editingId);
+        $find->bind_param("i", $editingId);
         $find->execute();
         $row = $find->get_result()->fetch_assoc();
         if ($row) {
@@ -1825,12 +1831,15 @@ function getTagadaSlip() {
 }
 
 /**
- * One month's statement for one client: what was owed going into the month
- * (OD), what was billed and paid during it, the closing balance, and the
- * payments received up to and including that month.
+ * A statement for one client over a period of one or more months: what was
+ * owed walking into it (OD), what was billed, paid and let off during it, the
+ * closing balance, and the payments and write-offs received inside it.
  *
- * OD is worked out exactly the way getClientBalances() does it, so the One
- * Client tab and the All Clients tab always agree on the same figure.
+ * The period runs from fromMonth/fromYear to month/year. Leaving the from-date
+ * out makes it a single month, which is how every other caller uses it.
+ *
+ * OD is worked out exactly the way getClientBalances() does it, so a one-month
+ * statement and the All Clients tab always agree on the same figure.
  */
 function getClientLedger() {
     $conn = getDbConnection();
@@ -1845,7 +1854,22 @@ function getClientLedger() {
     if ($month < 1 || $month > 12 || $year < 2000) {
         return json_encode(["status" => "failed", "error" => "Valid month and year are required"]);
     }
+    // month/year are the end of the period. A statement for a single month is
+    // simply a range whose two ends are the same, which is what an omitted
+    // from-date means - so every existing caller keeps its behaviour.
     $selected = $year * 100 + $month;
+    $fromMonth = (int)($obj->fromMonth ?? $month);
+    $fromYear = (int)($obj->fromYear ?? $year);
+    if ($fromMonth < 1 || $fromMonth > 12 || $fromYear < 2000) {
+        return json_encode(["status" => "failed", "error" => "Valid from month and year are required"]);
+    }
+    $from = $fromYear * 100 + $fromMonth;
+    if ($from > $selected) {
+        return json_encode([
+            "status" => "failed",
+            "error" => "The From month cannot be later than the To month",
+        ]);
+    }
 
     $openings = clientOpeningMap($conn);
     $key = strtolower(trim($client));
@@ -1859,9 +1883,10 @@ function getClientLedger() {
         $cutoff = $openings[$key]["cutoff"];
     }
 
-    // On a month earlier than the cut-off that opening figure has not been
-    // struck yet, so it must not be applied to the month being looked at.
-    if ($selected < $cutoff) {
+    // OD is what was owed walking into the first month of the period, so the
+    // cut-off is judged against that end. Start earlier than the cut-off and
+    // the opening figure has not been struck yet, so it cannot be applied.
+    if ($from < $cutoff) {
         $opening = 0.0;
     }
 
@@ -1886,8 +1911,8 @@ function getClientLedger() {
         if ($period > $selected) {
             continue;
         }
-        if ($period === $selected) {
-            // The month asked for always reports its own billing, cut-off or not.
+        if ($period >= $from) {
+            // The period asked for always reports its own billing, cut-off or not.
             $billed += (float)$row["billed"];
         } elseif ($period >= $cutoff) {
             // Anything before the cut-off is already inside the opening figure.
@@ -1917,20 +1942,25 @@ function getClientLedger() {
                 continue;
             }
             $bWriteoff = ($row["direction"] === "writeoff");
+            $bInPeriod = ($period >= $from);
             $value = (float)$row["amount"];
-            if ($period === $selected) {
+            if ($bInPeriod) {
                 if ($bWriteoff) { $writtenOff += $value; } else { $paid += $value; }
             } elseif ($period >= $cutoff) {
                 if ($bWriteoff) { $writtenOffBefore += $value; } else { $paidBefore += $value; }
             }
-            // The history runs to the statement month and no further, so a
-            // later payment can never make a past statement look settled.
+            // Only what came in during the period is listed, so the rows add up
+            // to the Paid and Written Off figures above them. Anything earlier
+            // has already been folded into OD.
+            if (!$bInPeriod) {
+                continue;
+            }
             $payments[] = [
                 "date" => $row["entry_date"],
                 "note" => $row["note"],
                 "amount" => $value,
                 "type" => $bWriteoff ? "writeoff" : "payment",
-                "inMonth" => $period === $selected,
+                "inMonth" => true,
             ];
         }
     }
@@ -1942,6 +1972,8 @@ function getClientLedger() {
         "client" => $client,
         "month" => $month,
         "year" => $year,
+        "fromMonth" => $fromMonth,
+        "fromYear" => $fromYear,
         "opening" => $opening,
         "od" => $od,
         "billed" => $billed,

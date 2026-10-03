@@ -52,6 +52,8 @@ sap.ui.define(
           this.byId("idBalYear").setSelectedKey(sYear);
           this.byId("idLedgerMonth").setSelectedKey(sMonth);
           this.byId("idLedgerYear").setSelectedKey(sYear);
+          this.byId("idLedgerToMonth").setSelectedKey(sMonth);
+          this.byId("idLedgerToYear").setSelectedKey(sYear);
         }
         this._loadClients();
       },
@@ -92,14 +94,22 @@ sap.ui.define(
           MessageBox.information("Pick a client first");
           return;
         }
-        this._loadLedger(
-          sClient,
-          parseInt(this.byId("idLedgerMonth").getSelectedKey(), 10),
-          parseInt(this.byId("idLedgerYear").getSelectedKey(), 10)
-        );
+        var iFromMonth = parseInt(this.byId("idLedgerMonth").getSelectedKey(), 10);
+        var iFromYear = parseInt(this.byId("idLedgerYear").getSelectedKey(), 10);
+        var iToMonth = parseInt(this.byId("idLedgerToMonth").getSelectedKey(), 10);
+        var iToYear = parseInt(this.byId("idLedgerToYear").getSelectedKey(), 10);
+
+        // Caught here as well as on the server, so the mistake is pointed out
+        // without a round trip.
+        if (iFromYear * 100 + iFromMonth > iToYear * 100 + iToMonth) {
+          MessageBox.error("The From month cannot be later than the To month");
+          return;
+        }
+
+        this._loadLedger(sClient, iFromMonth, iFromYear, iToMonth, iToYear);
       },
 
-      _loadLedger: function (sClient, iMonth, iYear) {
+      _loadLedger: function (sClient, iFromMonth, iFromYear, iMonth, iYear) {
         var that = this;
         sap.ui.core.BusyIndicator.show(0);
         $.ajax({
@@ -107,7 +117,13 @@ sap.ui.define(
           type: "POST",
           data: {
             method: "getClientLedger",
-            data: JSON.stringify({ client: sClient, month: iMonth, year: iYear }),
+            data: JSON.stringify({
+              client: sClient,
+              fromMonth: iFromMonth,
+              fromYear: iFromYear,
+              month: iMonth,
+              year: iYear,
+            }),
           },
           dataType: "json",
           success: function (res) {
@@ -135,7 +151,9 @@ sap.ui.define(
           return p;
         });
 
-        res.periodLabel = MONTH_NAMES[res.month - 1] + " " + res.year;
+        var sFrom = MONTH_NAMES[res.fromMonth - 1] + " " + res.fromYear;
+        var sTo = MONTH_NAMES[res.month - 1] + " " + res.year;
+        res.periodLabel = sFrom === sTo ? sTo : sFrom + "  to  " + sTo;
         res.paymentsTitle = "Payments & Write-offs (" + res.payments.length + ")";
         res.odText = money(res.od);
         res.odState = balanceState(res.od);

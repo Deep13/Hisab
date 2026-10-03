@@ -24,6 +24,7 @@ sap.ui.define(
       { key: "machine_expense", label: "Machine Expenses" },
       { key: "bhussi", label: "Bhussi" },
       { key: "v_belt", label: "V-Belt" },
+      { key: "tamba", label: "Tamba" },
       { key: "other", label: "Others" },
     ];
 
@@ -216,8 +217,30 @@ sap.ui.define(
       onEditEntry: function (oEvent) {
         var oCtx = oEvent.getSource().getBindingContext("khataModel");
         var oEntry = oCtx.getObject();
-        var sDirection = oCtx.getPath().indexOf("/credits") === 0 ? "credit" : "debit";
-        this._openEntryDialog(sDirection, oEntry);
+        var sPath = oCtx.getPath();
+
+        // A write-off belongs to the payment it was entered with, so editing
+        // one opens that whole settlement. Where the entire bill was forgiven
+        // there is no payment row, and the write-off stands on its own.
+        if (sPath.indexOf("/writeoffs") === 0) {
+          this._openEntryDialog("credit", this._paymentFor(oEntry), oEntry);
+          return;
+        }
+
+        var sDirection = sPath.indexOf("/credits") === 0 ? "credit" : "debit";
+        this._openEntryDialog(sDirection, oEntry, null);
+      },
+
+      // The payment a write-off was entered alongside, when there is one.
+      _paymentFor: function (oWriteoff) {
+        var oModel = this.getView().getModel("khataModel");
+        if (!oModel || !oWriteoff.parentId) {
+          return null;
+        }
+        var aMatch = (oModel.getProperty("/credits") || []).filter(function (c) {
+          return c.id === oWriteoff.parentId;
+        });
+        return aMatch.length ? aMatch[0] : null;
       },
 
       // The write-off that was entered with a given payment, if any. Matched on
@@ -234,27 +257,36 @@ sap.ui.define(
         return aMatch.length ? aMatch[0].amount : "";
       },
 
-      _openEntryDialog: function (sDirection, oEntry) {
+      _openEntryDialog: function (sDirection, oEntry, oWriteoff) {
         var that = this;
-        var bEdit = !!oEntry;
+        var bEdit = !!(oEntry || oWriteoff);
         var aCategories = sDirection === "credit" ? CREDIT_CATEGORIES : DEBIT_CATEGORIES;
-        var sCategory = bEdit ? oEntry.category : aCategories[0].key;
+        // A write-off with no payment behind it is still a client payment -
+        // just one where nothing was received.
+        var sCategory = oEntry ? oEntry.category
+          : (oWriteoff ? "client_payment" : aCategories[0].key);
+        // Client and remark come from whichever row we actually have.
+        var oBase = oEntry || oWriteoff || {};
 
         var oData = {
           title: (bEdit ? "Edit " : "Add ") + (sDirection === "credit" ? "Credit" : "Debit"),
           direction: sDirection,
           categories: aCategories,
           category: sCategory,
-          id: bEdit ? oEntry.id : 0,
-          source: bEdit ? oEntry.source : "khata",
-          serviceDt: bEdit && oEntry.serviceDt ? oEntry.serviceDt : "",
-          client: bEdit && oEntry.client ? oEntry.client : "",
-          cc: bEdit ? oEntry.cc : "",
-          machineName: bEdit ? oEntry.machineName : "",
-          note: bEdit ? oEntry.note : "",
-          amount: bEdit ? oEntry.amount : "",
+          id: oEntry ? oEntry.id : 0,
+          // Names the write-off row outright, so one with no payment behind it
+          // can still be found and updated rather than duplicated.
+          writeoffId: oWriteoff ? oWriteoff.id : 0,
+          source: oBase.source || "khata",
+          serviceDt: oBase.serviceDt || "",
+          client: oBase.client || "",
+          cc: oEntry ? oEntry.cc : "",
+          machineName: oEntry ? oEntry.machineName : "",
+          note: oBase.note || "",
+          amount: oEntry ? oEntry.amount : "",
           // Whatever was let off with this payment, so editing shows it back.
-          writeoff: bEdit ? this._writeoffFor(oEntry.id) : "",
+          writeoff: oWriteoff ? oWriteoff.amount
+            : (oEntry ? this._writeoffFor(oEntry.id) : ""),
         };
         Object.assign(oData, this._categoryFlags(sCategory));
 
@@ -383,6 +415,7 @@ sap.ui.define(
             method: "saveKhataEntry",
             data: JSON.stringify({
               id: oData.id || 0,
+              writeoffId: oData.writeoffId || 0,
               serviceDt: oData.serviceDt || "",
               entry_date: this.byId("idKhataDate").getValue(),
               direction: oData.direction,
@@ -414,9 +447,18 @@ sap.ui.define(
       onDeleteEntry: function (oEvent) {
         var that = this;
         var oEntry = oEvent.getSource().getBindingContext("khataModel").getObject();
-        var sWhat = oEntry.source === "service"
-          ? "Delete this machine expense? It will also be removed from Machine Expenses."
-          : "Delete this entry?";
+        var sWhat;
+        if (oEntry.source === "service") {
+          sWhat = "Delete this machine expense? It will also be removed from Machine Expenses.";
+        } else if (this._writeoffFor(oEntry.id)) {
+          // The write-off was part of this settlement, so it goes too and the
+          // client owes that money again. Say so before it happens.
+          sWhat = "Delete this payment? The write-off of " +
+            this._writeoffFor(oEntry.id).toLocaleString("en-IN") +
+            " entered with it will be removed as well, and the client will owe that amount again.";
+        } else {
+          sWhat = "Delete this entry?";
+        }
 
         MessageBox.confirm(sWhat, {
           onClose: function (sAction) {

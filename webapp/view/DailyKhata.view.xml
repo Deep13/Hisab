@@ -132,8 +132,6 @@
 					<Column width="12rem"><Label text="Against"/></Column>
 					<Column><Label text="Client / Details"/></Column>
 					<Column width="10rem" hAlign="End"><Label text="Amount"/></Column>
-					<!-- Matches the action column on the two tables above, so the
-					     Amount figures line up down the page. -->
 					<Column width="6rem" hAlign="Center"><Label text=""/></Column>
 				</columns>
 				<items>
@@ -142,7 +140,10 @@
 							<Text text="Write off / Less"/>
 							<Text text="{khataModel>details}"/>
 							<Text text="{khataModel>amount}"/>
-							<Text text=""/>
+							<HBox justifyContent="Center">
+								<Button icon="sap-icon://edit" type="Transparent" tooltip="Edit" press="onEditEntry"/>
+								<Button icon="sap-icon://delete" type="Transparent" tooltip="Delete" press="onDeleteEntry"/>
+							</HBox>
 						</cells>
 					</ColumnListItem>
 				</items>
