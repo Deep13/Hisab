@@ -47,9 +47,14 @@
                         <core:Item key="2027" text="2027"/>
                     </Select>
                 </VBox>
-                <VBox>
+                <VBox class="sapUiSmallMarginEnd">
                     <Label text=" "/>
                     <Button text="Submit" type="Emphasized" icon="sap-icon://search" press="onLoadData"/>
+                </VBox>
+                <VBox>
+                    <Label text=" "/>
+                    <CheckBox id="idOnlyDues" text="Only parties with dues"
+                        select="onOnlyDuesChange"/>
                 </VBox>
             </HBox>
             <Table id="idTable" sticky="ColumnHeaders" class="sapUiSizeCompact"

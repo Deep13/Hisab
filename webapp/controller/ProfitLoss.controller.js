@@ -38,6 +38,7 @@ sap.ui.define(
     var EXPENSES = [
       { key: "electric_bill", label: "Electric Bill", inputKey: "electricBill" },
       { key: "munshi", label: "Munshi", inputKey: "munshi" },
+      { key: "labour", label: "Labour", inputKey: "labour" },
       { key: "churi", label: "Churi", inputKey: "churi" },
       { key: "mobil", label: "Mobil", inputKey: "mobil" },
       { key: "buff_paper", label: "Buff Paper", inputKey: "buffPaper" },
@@ -622,6 +623,7 @@ sap.ui.define(
           bhussi: "bhussi",
           v_belt: "vBelt",
           machine_expense: "maintenance",
+          labour_payment: "labour",
           electricity: "electricBill",
           other: "miscellaneous"
         };

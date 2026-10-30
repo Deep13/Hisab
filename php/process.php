@@ -427,7 +427,7 @@ function insertService() {
     $obj = getPostData();
     $cc = $obj->cc;
     $servicedOn = $obj->servicedOn;
-    $serviceName = $obj->serviceName;
+    $serviceName = capitalise($obj->serviceName);
     $machineName = $obj->machineName;
     $amount = (float)$obj->Amount;
     $type = $obj->type;
@@ -444,15 +444,17 @@ function insertService() {
 function updateTrans() {
     $conn = getDbConnection();
     $obj = getPostData();
-    $client = $obj->client;
+    $client = capitalise($obj->client);
     $dateTime = $obj->dateTime;
-    $labour = $obj->labour;
+    $labour = capitalise($obj->labour);
     $date = $obj->date;
     $month = $obj->month;
     $year = $obj->year;
     $cc = $obj->cc;
     $rate = (float)$obj->rate;
-    $quantity = (int)$obj->quantity;
+    // Charbi is billed by the hour and half hours are normal, so this must
+    // not be an int cast - 4.5 would silently become 4 and undercharge.
+    $quantity = (float)$obj->quantity;
     $machineType = $obj->machineType;
 
     // Server-side authoritative pricing (see onCreateATransaction).
@@ -461,7 +463,7 @@ function updateTrans() {
     $total = $priced['total'];
 
     $stmt = $conn->prepare("UPDATE `transaction` SET `date` = ?, `client` = ?, `cc` = ?, `rate` = ?, `total` = ?, `labour` = ?, `quantity` = ?, `machineType` = ?, `month` = ?, `year` = ? WHERE `dateTime` = ?");
-    $stmt->bind_param("sssddsissss", $date, $client, $cc, $rate, $total, $labour, $quantity, $machineType, $month, $year, $dateTime);
+    $stmt->bind_param("sssddsdssss", $date, $client, $cc, $rate, $total, $labour, $quantity, $machineType, $month, $year, $dateTime);
 
     if ($stmt->execute()) {
         return json_encode(["Update successful"]);
@@ -472,7 +474,7 @@ function updateTrans() {
 function onCreateLabor() {
     $conn = getDbConnection();
     $obj = getPostData();
-    $Labor = $obj->Labor;
+    $Labor = capitalise($obj->Labor);
     $id = $obj->id;
 
     $stmt = $conn->prepare("INSERT INTO masterlabor(id, Labor) VALUES (?, ?)");
@@ -487,8 +489,8 @@ function onCreateLabor() {
 function onUpdateClient() {
     $conn = getDbConnection();
     $obj = getPostData();
-    $Client = $obj->client;
-    $NewName = $obj->newname;
+    $Client = capitalise($obj->client);
+    $NewName = capitalise($obj->newname);
 
     $conn->begin_transaction();
 
@@ -516,7 +518,7 @@ function onCreateClient() {
     $conn = getDbConnection();
     $obj = getPostData();
     $id = $obj->id;
-    $Client = $obj->Client;
+    $Client = capitalise($obj->Client);
 
     $stmt = $conn->prepare("INSERT INTO masterclient(id, client) VALUES (?, ?)");
     $stmt->bind_param("ss", $id, $Client);
@@ -530,14 +532,16 @@ function onCreateClient() {
 function onCreateATransaction() {
     $conn = getDbConnection();
     $obj = getPostData();
-    $client = $obj->client;
-    $labour = $obj->labour;
+    $client = capitalise($obj->client);
+    $labour = capitalise($obj->labour);
     $date = $obj->date;
     $month = $obj->month;
     $year = $obj->year;
     $cc = $obj->cc;
     $rate = (float)$obj->rate;
-    $quantity = (int)$obj->quantity;
+    // Charbi is billed by the hour and half hours are normal, so this must
+    // not be an int cast - 4.5 would silently become 4 and undercharge.
+    $quantity = (float)$obj->quantity;
     $machineType = $obj->machineType;
 
     // Server-side authoritative pricing: for configured machine types (Softening,
@@ -548,7 +552,7 @@ function onCreateATransaction() {
     $total = $priced['total'];
 
     $stmt = $conn->prepare("INSERT INTO transaction(date, client, labour, cc, rate, quantity, machineType, total, month, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("ssssdisdss", $date, $client, $labour, $cc, $rate, $quantity, $machineType, $total, $month, $year);
+    $stmt->bind_param("ssssddsdss", $date, $client, $labour, $cc, $rate, $quantity, $machineType, $total, $month, $year);
 
     if ($stmt->execute()) {
         return json_encode(["Insertion successful"]);
@@ -614,6 +618,7 @@ function insertProfitLoss() {
     $tangan = (float)($obj->tangan ?? 0);
     $electricBill = (float)($obj->electricBill ?? 0);
     $munshi = (float)($obj->munshi ?? 0);
+    $labourExp = (float)($obj->labour ?? 0);
     $churi = (float)($obj->churi ?? 0);
     $mobil = (float)($obj->mobil ?? 0);
     $buffPaper = (float)($obj->buffPaper ?? 0);
@@ -622,23 +627,43 @@ function insertProfitLoss() {
     $vBelt = (float)($obj->vBelt ?? 0);
     $miscellaneous = (float)($obj->miscellaneous ?? 0);
 
-    $stmt = @$conn->prepare(
-        "INSERT INTO profit_loss (month, year, shaving, buffing, charbi, milling, tangan, electric_bill, munshi, churi, mobil, buff_paper, bhussi, maintenance, v_belt, miscellaneous)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE
-            shaving = VALUES(shaving), buffing = VALUES(buffing), charbi = VALUES(charbi),
-            milling = VALUES(milling), tangan = VALUES(tangan), electric_bill = VALUES(electric_bill),
-            munshi = VALUES(munshi), churi = VALUES(churi), mobil = VALUES(mobil),
-            buff_paper = VALUES(buff_paper), bhussi = VALUES(bhussi), maintenance = VALUES(maintenance),
-            v_belt = VALUES(v_belt), miscellaneous = VALUES(miscellaneous)"
+    // The labour line arrived with its own migration, so a machine that has not
+    // had it applied still saves every other figure instead of failing.
+    $res = @$conn->query("SHOW COLUMNS FROM `profit_loss` LIKE 'labour'");
+    $bLabourCol = $res && $res->num_rows > 0;
+
+    $stmt = @$conn->prepare($bLabourCol
+        ? "INSERT INTO profit_loss (month, year, shaving, buffing, charbi, milling, tangan, electric_bill, munshi, labour, churi, mobil, buff_paper, bhussi, maintenance, v_belt, miscellaneous)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+              shaving = VALUES(shaving), buffing = VALUES(buffing), charbi = VALUES(charbi),
+              milling = VALUES(milling), tangan = VALUES(tangan), electric_bill = VALUES(electric_bill),
+              munshi = VALUES(munshi), labour = VALUES(labour), churi = VALUES(churi), mobil = VALUES(mobil),
+              buff_paper = VALUES(buff_paper), bhussi = VALUES(bhussi), maintenance = VALUES(maintenance),
+              v_belt = VALUES(v_belt), miscellaneous = VALUES(miscellaneous)"
+        : "INSERT INTO profit_loss (month, year, shaving, buffing, charbi, milling, tangan, electric_bill, munshi, churi, mobil, buff_paper, bhussi, maintenance, v_belt, miscellaneous)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+              shaving = VALUES(shaving), buffing = VALUES(buffing), charbi = VALUES(charbi),
+              milling = VALUES(milling), tangan = VALUES(tangan), electric_bill = VALUES(electric_bill),
+              munshi = VALUES(munshi), churi = VALUES(churi), mobil = VALUES(mobil),
+              buff_paper = VALUES(buff_paper), bhussi = VALUES(bhussi), maintenance = VALUES(maintenance),
+              v_belt = VALUES(v_belt), miscellaneous = VALUES(miscellaneous)"
     );
     if (!$stmt) {
         return json_encode(["status" => "failed", "error" => "Table 'profit_loss' does not exist. Please create it in the database."]);
     }
-    $stmt->bind_param("ssdddddddddddddd",
-        $month, $year, $shaving, $buffing, $charbi, $milling, $tangan,
-        $electricBill, $munshi, $churi, $mobil, $buffPaper, $bhussi, $maintenance, $vBelt, $miscellaneous
-    );
+    if ($bLabourCol) {
+        $stmt->bind_param("ssddddddddddddddd",
+            $month, $year, $shaving, $buffing, $charbi, $milling, $tangan,
+            $electricBill, $munshi, $labourExp, $churi, $mobil, $buffPaper, $bhussi, $maintenance, $vBelt, $miscellaneous
+        );
+    } else {
+        $stmt->bind_param("ssdddddddddddddd",
+            $month, $year, $shaving, $buffing, $charbi, $milling, $tangan,
+            $electricBill, $munshi, $churi, $mobil, $buffPaper, $bhussi, $maintenance, $vBelt, $miscellaneous
+        );
+    }
 
     if ($stmt->execute()) {
         return json_encode(["status" => "success"]);
@@ -688,7 +713,7 @@ function createMachine() {
     $conn = getDbConnection();
     $obj = getPostData();
     $cc = trim($obj->cc ?? '');
-    $machineName = trim($obj->machineName ?? '');
+    $machineName = capitalise($obj->machineName ?? "");
     $type = trim($obj->type ?? '');
 
     if ($cc === '' || $machineName === '' || $type === '') {
@@ -742,7 +767,7 @@ function insertMachineExpense() {
     $obj = getPostData();
     $cc = trim($obj->cc ?? '');
     $machineName = trim($obj->machineName ?? '');
-    $serviceName = trim($obj->serviceName ?? '');
+    $serviceName = capitalise($obj->serviceName ?? "");
     $servicedOn = $obj->servicedOn ?? '';
     $amount = (float)($obj->Amount ?? 0);
 
@@ -932,7 +957,7 @@ function saveNotice() {
     $conn = getDbConnection();
     $obj = getPostData();
     $id = isset($obj->id) && $obj->id !== "" ? (int)$obj->id : 0;
-    $notice = trim($obj->notice ?? '');
+    $notice = capitalise($obj->notice ?? "");
     $active = !empty($obj->active) ? 1 : 0;
     $clients = isset($obj->clients) && is_array($obj->clients) ? $obj->clients : [];
 
@@ -1009,7 +1034,7 @@ function saveNotice() {
 function khataCategories() {
     return [
         "credit" => ["client_payment", "thaktha_bhara", "other"],
-        "debit" => ["churi", "buff_paper", "mobil", "bhussi", "v_belt", "tamba", "other"],
+        "debit" => ["churi", "buff_paper", "mobil", "bhussi", "v_belt", "tamba", "labour_payment", "other"],
         "writeoff" => ["client_writeoff"],
     ];
 }
@@ -1037,6 +1062,33 @@ function khataSupportsWriteoff($conn) {
         $ok = $wideEnough && $hasParent;
     }
     return $ok;
+}
+
+/** Whether sql/migrate_labour_payment.sql has been applied here. */
+function khataSupportsLabour($conn) {
+    static $ok = null;
+    if ($ok === null) {
+        $res = @$conn->query("SHOW COLUMNS FROM `daily_khata` LIKE 'labour'");
+        $ok = $res && $res->num_rows > 0;
+    }
+    return $ok;
+}
+
+/**
+ * Capitalises the first letter of a name or note on its way into the database,
+ * leaving the rest of the text exactly as typed - so "abdul khan" is stored as
+ * "Abdul khan" and "MD Taquib" is not flattened to "Md taquib".
+ *
+ * Only the first character changes, so this can never alter which client or
+ * labour a row points at: the database collation is case-insensitive, and the
+ * code that matches names lowercases both sides anyway.
+ */
+function capitalise($text) {
+    $text = trim((string)$text);
+    if ($text === '') {
+        return $text;
+    }
+    return mb_strtoupper(mb_substr($text, 0, 1)) . mb_substr($text, 1);
 }
 
 // The one-time cash-in-hand the day book starts from.
@@ -1124,8 +1176,9 @@ function getDailyKhata() {
     // parent_id only exists once the write-off migration has run, so the day
     // book keeps working on a machine that has not had it applied yet.
     $parentCol = khataSupportsWriteoff($conn) ? "parent_id" : "NULL AS parent_id";
+    $labourCol = khataSupportsLabour($conn) ? "labour" : "NULL AS labour";
     $stmt = $conn->prepare(
-        "SELECT id, $parentCol, direction, category, client, note, amount
+        "SELECT id, $parentCol, direction, category, client, $labourCol, note, amount
          FROM daily_khata WHERE entry_date = ? ORDER BY id ASC"
     );
     $stmt->bind_param("s", $date);
@@ -1138,6 +1191,7 @@ function getDailyKhata() {
             "source" => "khata",
             "category" => $row["category"],
             "client" => $row["client"],
+            "labour" => $row["labour"],
             "note" => $row["note"],
             "amount" => (float)$row["amount"],
             "cc" => "",
@@ -1212,9 +1266,10 @@ function saveKhataEntry() {
     $date = $obj->entry_date ?? '';
     $direction = $obj->direction ?? '';
     $category = $obj->category ?? '';
-    $note = trim($obj->note ?? '');
+    $note = capitalise($obj->note ?? '');
     $amount = (float)($obj->amount ?? 0);
-    $client = trim($obj->client ?? '');
+    $client = capitalise($obj->client ?? '');
+    $labour = capitalise($obj->labour ?? '');
     $id = (int)($obj->id ?? 0);
     // Money the client was let off, entered alongside what they actually paid.
     $writeoff = (float)($obj->writeoff ?? 0);
@@ -1256,6 +1311,17 @@ function saveKhataEntry() {
     }
     if ($category === "client_payment" && $client === '') {
         return json_encode(["status" => "failed", "error" => "Select the client who paid"]);
+    }
+    if ($category === "labour_payment") {
+        if ($labour === '') {
+            return json_encode(["status" => "failed", "error" => "Select the labour who was paid"]);
+        }
+        if (!khataSupportsLabour($conn)) {
+            return json_encode([
+                "status" => "failed",
+                "error" => "Labour payments are not set up on this computer yet. Please run sql/migrate_labour_payment.sql once, then try again.",
+            ]);
+        }
     }
 
     if ($category === "machine_expense") {
@@ -1301,6 +1367,9 @@ function saveKhataEntry() {
     // Client-scoped rows keep their client; everything else has none.
     $clientValue = ($category === "client_payment" || $category === "client_writeoff")
         ? $client : null;
+    // Likewise the labour, so switching category can never strand a name on a
+    // row that has no business carrying one.
+    $labourValue = ($category === "labour_payment") ? $labour : null;
 
     // The payment and the money let off are one act of settling an account, so
     // they are written together or not at all.
@@ -1311,27 +1380,43 @@ function saveKhataEntry() {
     // and any earlier one is cleared away below.
     $bHasPayment = ($amount > 0);
 
+    // The labour column only exists once its migration has run, so the day book
+    // keeps working on a machine that has not had it applied yet.
+    $bLabourCol = khataSupportsLabour($conn);
+
     if ($bHasPayment) {
         if ($id > 0) {
-            $stmt = @$conn->prepare(
-                "UPDATE `daily_khata` SET `entry_date` = ?, `direction` = ?, `category` = ?,
-                 `client` = ?, `note` = ?, `amount` = ? WHERE `id` = ?"
+            $stmt = @$conn->prepare($bLabourCol
+                ? "UPDATE `daily_khata` SET `entry_date` = ?, `direction` = ?, `category` = ?,
+                   `client` = ?, `labour` = ?, `note` = ?, `amount` = ? WHERE `id` = ?"
+                : "UPDATE `daily_khata` SET `entry_date` = ?, `direction` = ?, `category` = ?,
+                   `client` = ?, `note` = ?, `amount` = ? WHERE `id` = ?"
             );
             if (!$stmt) {
                 $conn->rollback();
                 return json_encode(["status" => "failed", "error" => "Table 'daily_khata' does not exist. Please run sql/daily_khata.sql."]);
             }
-            $stmt->bind_param("sssssdi", $date, $direction, $category, $clientValue, $note, $amount, $id);
+            if ($bLabourCol) {
+                $stmt->bind_param("ssssssdi", $date, $direction, $category, $clientValue, $labourValue, $note, $amount, $id);
+            } else {
+                $stmt->bind_param("sssssdi", $date, $direction, $category, $clientValue, $note, $amount, $id);
+            }
         } else {
-            $stmt = @$conn->prepare(
-                "INSERT INTO `daily_khata` (`entry_date`, `direction`, `category`, `client`, `note`, `amount`)
-                 VALUES (?, ?, ?, ?, ?, ?)"
+            $stmt = @$conn->prepare($bLabourCol
+                ? "INSERT INTO `daily_khata` (`entry_date`, `direction`, `category`, `client`, `labour`, `note`, `amount`)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)"
+                : "INSERT INTO `daily_khata` (`entry_date`, `direction`, `category`, `client`, `note`, `amount`)
+                   VALUES (?, ?, ?, ?, ?, ?)"
             );
             if (!$stmt) {
                 $conn->rollback();
                 return json_encode(["status" => "failed", "error" => "Table 'daily_khata' does not exist. Please run sql/daily_khata.sql."]);
             }
-            $stmt->bind_param("sssssd", $date, $direction, $category, $clientValue, $note, $amount);
+            if ($bLabourCol) {
+                $stmt->bind_param("ssssssd", $date, $direction, $category, $clientValue, $labourValue, $note, $amount);
+            } else {
+                $stmt->bind_param("sssssd", $date, $direction, $category, $clientValue, $note, $amount);
+            }
         }
 
         if (!$stmt->execute()) {
@@ -2082,8 +2167,8 @@ function saveElectricityMeter() {
     $id = (int)($obj->id ?? 0);
     $customerId = trim($obj->customer_id ?? '');
     $meterNumber = trim($obj->meter_number ?? '');
-    $consumerName = trim($obj->consumer_name ?? '');
-    $nickname = trim($obj->nickname ?? '');
+    $consumerName = capitalise($obj->consumer_name ?? "");
+    $nickname = capitalise($obj->nickname ?? "");
     $cc = trim($obj->cc ?? '');
     $active = isset($obj->active) ? (!empty($obj->active) ? 1 : 0) : 1;
 

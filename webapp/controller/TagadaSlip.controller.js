@@ -7,8 +7,9 @@ sap.ui.define(
     "sap/m/BusyDialog",
     "sap/ui/core/Fragment",
     "sap/ui/model/Sorter",
+    "sap/ui/model/Filter",
   ],
-  function (Controller, JSONModel, MessageBox, MessageToast, BusyDialog, Fragment, Sorter) {
+  function (Controller, JSONModel, MessageBox, MessageToast, BusyDialog, Fragment, Sorter, Filter) {
     "use strict";
 
     var MONTHS = [
@@ -221,6 +222,59 @@ sap.ui.define(
           var sGroup = oCtx.getProperty("group") || OTHER_GROUP;
           return { key: sGroup, text: sGroup };
         }));
+        this._applyDueFilter();
+      },
+
+      _isDueRow: function (oRow) {
+        if (!this.byId("idOnlyDues").getSelected()) {
+          return true;
+        }
+        return oRow.showOnSlip === true;
+      },
+
+      onOnlyDuesChange: function () {
+        this._applyDueFilter();
+        this._updateGrandTotal();
+      },
+
+      /**
+       * Hides parties with nothing left to collect.
+       *
+       * Membership is worked out once, here, and parked on the row rather than
+       * read live off `total`. Filtering on the figure itself would make a row
+       * disappear from under the cursor the moment an OD edit settled it; this
+       * way the row stays put until the box is toggled or the month reloaded.
+       *
+       * A blank row typed in by hand always stays, or it would vanish the
+       * instant it was added, before anything had been entered on it.
+       */
+      _applyDueFilter: function () {
+        var oBinding = this.byId("idTable").getBinding("items");
+        var oModel = this.getView().getModel("tagadaModel");
+        if (!oBinding || !oModel) {
+          return;
+        }
+        if (!this.byId("idOnlyDues").getSelected()) {
+          oBinding.filter([]);
+          return;
+        }
+        (oModel.getProperty("/rows") || []).forEach(function (r) {
+          r.showOnSlip = !r.partyName || money(r.total) !== 0;
+        });
+        oBinding.filter(new Filter({
+          path: "showOnSlip",
+          test: function (bShow) { return bShow === true; },
+        }));
+      },
+
+      // The rows the slip is actually showing. Print, Excel and the invoices
+      // all build from this, so none of them can disagree with the screen.
+      _visibleRows: function () {
+        var oModel = this.getView().getModel("tagadaModel");
+        if (!oModel) {
+          return [];
+        }
+        return (oModel.getProperty("/rows") || []).filter(this._isDueRow, this);
       },
 
       /** Sections in display order, used by both print paths and the export. */
@@ -231,7 +285,7 @@ sap.ui.define(
         }
         var aGroups = [];
         var mByName = {};
-        (oModel.getProperty("/rows") || []).forEach(function (r) {
+        this._visibleRows().forEach(function (r) {
           if (!r.partyName) {
             return;
           }
@@ -296,15 +350,20 @@ sap.ui.define(
         this._setTableData(rows);
       },
 
+      // Totals what is on screen, so the figure always matches the rows under
+      // it rather than counting parties the slip is hiding.
       _updateGrandTotal: function () {
         var oModel = this.getView().getModel("tagadaModel");
         if (!oModel) { return; }
-        var rows = oModel.getProperty("/rows") || [];
+        var aRows = this._visibleRows();
         var grand = 0;
-        rows.forEach(function (r) {
-          grand += parseFloat(r.total) || 0;
+        aRows.forEach(function (r) {
+          grand += money(r.total);
         });
-        this.byId("idGrandTotal").setText("Grand Total: " + grand);
+        var iParties = aRows.filter(function (r) { return !!r.partyName; }).length;
+        this.byId("idGrandTotal").setText(
+          "Grand Total (" + iParties + "): " + grand
+        );
       },
 
       // ==================== OLD DATA (CSV) ====================

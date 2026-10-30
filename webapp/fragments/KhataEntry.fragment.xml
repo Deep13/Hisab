@@ -18,6 +18,13 @@
 						<core:Item key="{ClientModel>client}" text="{ClientModel>client}"/>
 					</ComboBox>
 
+					<Label text="Labour" required="true" visible="{entryModel>/showLabour}"/>
+					<ComboBox id="idEntryLabour" width="100%" visible="{entryModel>/showLabour}"
+						selectedKey="{entryModel>/labour}" placeholder="Select the labour who was paid"
+						items="{LabourModel>/Labours_results}">
+						<core:Item key="{LabourModel>Labor}" text="{LabourModel>Labor}"/>
+					</ComboBox>
+
 					<Label text="Office" required="true" visible="{entryModel>/showMachine}"/>
 					<ComboBox id="idEntryOffice" width="100%" visible="{entryModel>/showMachine}"
 						selectedKey="{entryModel>/cc}" placeholder="Select office"

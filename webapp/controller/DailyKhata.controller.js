@@ -25,6 +25,7 @@ sap.ui.define(
       { key: "bhussi", label: "Bhussi" },
       { key: "v_belt", label: "V-Belt" },
       { key: "tamba", label: "Tamba" },
+      { key: "labour_payment", label: "Payment to Labour" },
       { key: "other", label: "Others" },
     ];
 
@@ -54,6 +55,7 @@ sap.ui.define(
           this.byId("idKhataDate").setValue(toIsoDate(new Date()));
         }
         this._loadClients();
+        this._loadLabours();
         this._loadMachines();
         this._loadDay();
       },
@@ -97,6 +99,22 @@ sap.ui.define(
             var oModel = new JSONModel({ Clients_results: clients || [] });
             oModel.setSizeLimit(1000);
             that.getView().setModel(oModel, "ClientModel");
+          },
+        });
+      },
+
+      // Fills the picker on a payment to labour.
+      _loadLabours: function () {
+        var that = this;
+        $.ajax({
+          url: this.uri,
+          type: "POST",
+          data: { method: "getAllLabours" },
+          dataType: "json",
+          success: function (labours) {
+            var oModel = new JSONModel({ Labours_results: labours || [] });
+            oModel.setSizeLimit(1000);
+            that.getView().setModel(oModel, "LabourModel");
           },
         });
       },
@@ -178,6 +196,8 @@ sap.ui.define(
             }
           } else if (entry.category === "client_writeoff") {
             entry.details = entry.client + (entry.note ? " - " + entry.note : "");
+          } else if (entry.category === "labour_payment") {
+            entry.details = (entry.labour || "") + (entry.note ? " - " + entry.note : "");
           } else if (entry.category === "machine_expense") {
             entry.details = entry.cc + " / " + entry.machineName +
               (entry.note ? " - " + entry.note : "");
@@ -280,6 +300,7 @@ sap.ui.define(
           source: oBase.source || "khata",
           serviceDt: oBase.serviceDt || "",
           client: oBase.client || "",
+          labour: oBase.labour || "",
           cc: oEntry ? oEntry.cc : "",
           machineName: oEntry ? oEntry.machineName : "",
           note: oBase.note || "",
@@ -316,6 +337,7 @@ sap.ui.define(
           return {
             showClient: true,
             showMachine: false,
+            showLabour: false,
             // Money a client is let off rides along with what they paid, so it
             // is only ever offered here.
             showWriteoff: true,
@@ -325,11 +347,24 @@ sap.ui.define(
             notePlaceholder: "e.g. cash, cheque no.",
           };
         }
+        if (sCategory === "labour_payment") {
+          return {
+            showClient: false,
+            showMachine: false,
+            showWriteoff: false,
+            showLabour: true,
+            amountLabel: "Paid",
+            clientPlaceholder: "",
+            noteLabel: "Remark",
+            notePlaceholder: "e.g. cash, advance",
+          };
+        }
         if (sCategory === "machine_expense") {
           return {
             showClient: false,
             showMachine: true,
             showWriteoff: false,
+            showLabour: false,
             amountLabel: "Amount",
             clientPlaceholder: "",
             noteLabel: "Spent On",
@@ -340,6 +375,7 @@ sap.ui.define(
           showClient: false,
           showMachine: false,
           showWriteoff: false,
+          showLabour: false,
           amountLabel: "Amount",
           clientPlaceholder: "",
           noteLabel: "Details",
@@ -421,6 +457,7 @@ sap.ui.define(
               direction: oData.direction,
               category: oData.category,
               client: oData.client || "",
+              labour: oData.labour || "",
               cc: oData.cc || "",
               machineName: oData.machineName || "",
               note: oData.note || "",
