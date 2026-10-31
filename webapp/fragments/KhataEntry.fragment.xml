@@ -50,7 +50,7 @@
 					<Label text="Less / Write-off" visible="{entryModel>/showWriteoff}"/>
 					<Input id="idEntryWriteoff" width="100%" value="{entryModel>/writeoff}" type="Number"
 						textAlign="End" placeholder="0" visible="{entryModel>/showWriteoff}"
-						description="settles the client, not counted as cash"/>
+						description="no cash; use a minus figure to cancel an advance"/>
 				</l:content>
 			</l:SimpleForm>
 		</content>

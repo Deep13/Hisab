@@ -1292,22 +1292,29 @@ function saveKhataEntry() {
     if (!$bWriteoffAllowed) {
         $writeoff = 0.0;
     }
-    if ($writeoff < 0) {
-        return json_encode(["status" => "failed", "error" => "Write-off cannot be negative"]);
-    }
-    if ($writeoff > 0 && !khataSupportsWriteoff($conn)) {
+    if ($writeoff != 0 && !khataSupportsWriteoff($conn)) {
         return json_encode([
             "status" => "failed",
             "error" => "Write-offs are not set up on this computer yet. Please run sql/migrate_writeoff.sql once, then try again.",
         ]);
     }
-    // The whole bill may be forgiven, in which case nothing was received - so
-    // it is the pair that has to add up to something, not the payment alone.
-    if ($amount + $writeoff <= 0) {
-        return json_encode(["status" => "failed", "error" => "Amount must be greater than zero"]);
-    }
     if ($amount < 0) {
         return json_encode(["status" => "failed", "error" => "Amount cannot be negative"]);
+    }
+    // A write-off works in whichever direction the account is out. Positive
+    // forgives money a client owes; negative cancels an advance they are
+    // letting go of, so the credit stops being carried forward. Either way no
+    // cash moves, so the pair only has to come to something other than nothing.
+    if ($amount == 0.0 && $writeoff == 0.0) {
+        return json_encode([
+            "status" => "failed",
+            "error" => $bWriteoffAllowed
+                ? "Enter an amount received, a write-off, or both"
+                : "Amount must be greater than zero",
+        ]);
+    }
+    if (!$bWriteoffAllowed && $amount <= 0) {
+        return json_encode(["status" => "failed", "error" => "Amount must be greater than zero"]);
     }
     if ($category === "client_payment" && $client === '') {
         return json_encode(["status" => "failed", "error" => "Select the client who paid"]);
@@ -1436,19 +1443,35 @@ function saveKhataEntry() {
         $paymentId = 0;
     }
 
+    $savedWriteoffId = 0;
     if ($bWriteoffAllowed) {
-        if (!saveKhataWriteoff($conn, $writeoffId, $id, $paymentId, $date, $clientValue, $note, $writeoff)) {
+        $savedWriteoffId = saveKhataWriteoff($conn, $writeoffId, $id, $paymentId, $date, $clientValue, $note, $writeoff);
+        // Zero is a real answer here - no write-off on this entry - so only an
+        // explicit false means the write failed.
+        if ($savedWriteoffId === false) {
             $conn->rollback();
             return json_encode(["status" => "failed", "error" => "Could not save the write-off"]);
         }
     }
 
     $conn->commit();
-    return json_encode(["status" => "success", "id" => $paymentId]);
+    // Both ids go back. A whole bill forgiven has no payment row, so `id` is 0
+    // and `writeoffId` is the only handle on what was just written - without it
+    // the caller cannot delete or re-edit the row it created.
+    return json_encode([
+        "status" => "success",
+        "id" => $paymentId,
+        "writeoffId" => $savedWriteoffId,
+    ]);
 }
 
 /**
+
  * Writes, updates or clears the write-off that belongs to a client payment.
+ *
+ * Returns the row id, 0 when there is no write-off on this entry, and false
+ * only if the write itself failed - so the caller can tell "nothing to do"
+ * apart from "it went wrong".
  *
  * The write-off is found by its `parent_id` rather than by client and date,
  * so a client paying twice in one day keeps two separate, correct pairs.
@@ -1474,14 +1497,15 @@ function saveKhataWriteoff($conn, $writeoffId, $editingId, $parentId, $date, $cl
     }
 
     // Cleared back to nothing: the row must go, or the old figure would linger
-    // and keep settling an account that is no longer settled.
-    if ($amount <= 0) {
+    // and keep settling an account that is no longer settled. Exactly zero -
+    // a negative figure is a real entry, an advance being let go of.
+    if ($amount == 0.0) {
         if ($existingId > 0) {
             $del = $conn->prepare("DELETE FROM `daily_khata` WHERE `id` = ?");
             $del->bind_param("i", $existingId);
-            return $del->execute();
+            return $del->execute() ? 0 : false;
         }
-        return true;
+        return 0;
     }
 
     $parent = $parentId > 0 ? $parentId : null;
@@ -1491,7 +1515,7 @@ function saveKhataWriteoff($conn, $writeoffId, $editingId, $parentId, $date, $cl
              `amount` = ?, `parent_id` = ? WHERE `id` = ?"
         );
         $stmt->bind_param("sssdii", $date, $client, $note, $amount, $parent, $existingId);
-        return $stmt->execute();
+        return $stmt->execute() ? $existingId : false;
     }
 
     $stmt = $conn->prepare(
@@ -1500,7 +1524,7 @@ function saveKhataWriteoff($conn, $writeoffId, $editingId, $parentId, $date, $cl
          VALUES (?, ?, 'writeoff', 'client_writeoff', ?, ?, ?)"
     );
     $stmt->bind_param("isssd", $parent, $date, $client, $note, $amount);
-    return $stmt->execute();
+    return $stmt->execute() ? $conn->insert_id : false;
 }
 
 function deleteKhataEntry() {
@@ -1890,6 +1914,52 @@ function getTagadaSlip() {
         ];
     }
 
+    // What each factory billed this client in earlier months, for the slip's
+    // per-factory OD columns.
+    //
+    // This is only the billing part of OD. The opening balance and the
+    // payments that also make up OD are held against the client and never a
+    // factory, so they cannot be split and are reported once per client. The
+    // per-factory figures therefore will NOT add up to the client's true OD -
+    // that total comes from `balances` below, which stays authoritative.
+    $selected = $year * 100 + $month;
+    $openings = clientOpeningMap($conn);
+    $defaultCutoff = clientOpeningCutoff($conn);
+
+    $priorBilling = [];
+    $result = $conn->query(
+        "SELECT client, cc, year, month, COALESCE(SUM(total), 0) AS billed
+         FROM transaction
+         WHERE machineType <> 'Thokai' AND client IS NOT NULL AND client <> '' AND cc <> ''
+         GROUP BY client, cc, year, month"
+    );
+    $mPrior = [];
+    while ($row = $result->fetch_assoc()) {
+        $period = (int)$row["year"] * 100 + (int)$row["month"];
+        if ($period >= $selected) {
+            continue;
+        }
+        $key = strtolower(trim($row["client"]));
+        $cutoff = isset($openings[$key]) ? $openings[$key]["cutoff"] : $defaultCutoff;
+        if ($period < $cutoff) {
+            continue;
+        }
+        $k = $key . "|" . trim($row["cc"]);
+        if (!isset($mPrior[$k])) {
+            $mPrior[$k] = [
+                "client" => trim($row["client"]),
+                "cc" => trim($row["cc"]),
+                "billedBefore" => 0.0,
+            ];
+        }
+        $mPrior[$k]["billedBefore"] += (float)$row["billed"];
+    }
+    foreach ($mPrior as $row) {
+        if ($row["billedBefore"] != 0.0) {
+            $priorBilling[] = $row;
+        }
+    }
+
     // Same figures the Client Ledger shows, so the two can never disagree.
     $balances = [];
     foreach (clientBalanceRows($conn, $month, $year) as $row) {
@@ -1911,6 +1981,7 @@ function getTagadaSlip() {
         "month" => $month,
         "year" => $year,
         "billing" => $billing,
+        "priorBilling" => $priorBilling,
         "balances" => $balances,
     ]);
 }

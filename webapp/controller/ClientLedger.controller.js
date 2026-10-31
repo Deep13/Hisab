@@ -145,7 +145,11 @@ sap.ui.define(
         res.payments = (res.payments || []).map(function (p) {
           p.amountText = money(p.amount);
           p.isWriteoff = p.type === "writeoff";
-          p.typeLabel = p.isWriteoff ? "Write off / Less" : "Payment";
+          // A negative write-off is an advance the client let go of, which is
+          // the opposite movement and has to say so.
+          p.typeLabel = p.isWriteoff
+            ? (p.amount < 0 ? "Advance written off" : "Write off / Less")
+            : "Payment";
           // Labelled in words as well as colour, because this gets printed.
           p.highlight = p.isWriteoff ? "Warning" : (p.inMonth ? "Success" : "None");
           return p;

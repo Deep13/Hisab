@@ -57,56 +57,11 @@
                         select="onOnlyDuesChange"/>
                 </VBox>
             </HBox>
-            <Table id="idTable" sticky="ColumnHeaders" class="sapUiSizeCompact"
-                items="{tagadaModel>/rows}">
-                <headerToolbar>
-                    <OverflowToolbar>
-                        <Title text="Tagada Slip" id="idTableTitle"/>
-                    </OverflowToolbar>
-                </headerToolbar>
-                <columns>
-                    <Column width="60px" hAlign="Center">
-                        <Label text="SL"/>
-                    </Column>
-                    <Column>
-                        <Label text="Party Name"/>
-                    </Column>
-                    <Column width="140px" hAlign="Right">
-                        <Label text="Current"/>
-                    </Column>
-                    <Column width="140px" hAlign="Right">
-                        <Label text="OD"/>
-                    </Column>
-                    <Column width="140px" hAlign="Right">
-                        <Label text="Paid"/>
-                    </Column>
-                    <Column width="140px" hAlign="Right">
-                        <Label text="Due"/>
-                    </Column>
-                    <Column width="60px" hAlign="Center">
-                        <Label text=""/>
-                    </Column>
-                </columns>
-                <items>
-                    <ColumnListItem>
-                        <cells>
-                            <Text text="{tagadaModel>sl}"/>
-                            <Input value="{tagadaModel>partyName}" placeholder="Enter party name"
-                                suggestionItems="{ClientModel>/Clients_results}"
-                                showSuggestion="true">
-                                <suggestionItems>
-                                    <core:Item text="{ClientModel>client}"/>
-                                </suggestionItems>
-                            </Input>
-                            <Text text="{tagadaModel>current}"/>
-                            <Input value="{tagadaModel>od}" type="Number" liveChange="onOdChange" placeholder="0"/>
-                            <Text text="{tagadaModel>paid}"/>
-                            <Text text="{tagadaModel>total}" class="sapUiSmallMarginBegin"/>
-                            <Button icon="sap-icon://delete" type="Transparent" press="onDeleteRow" tooltip="Delete row"/>
-                        </cells>
-                    </ColumnListItem>
-                </items>
-            </Table>
+            <!-- One table per section, built in the controller: the All section
+                 carries a column pair for every factory a party worked at, while
+                 each factory section carries only its own. Column sets differ by
+                 section, which a single grouped table cannot do. -->
+            <VBox id="idTableBox"/>
             <OverflowToolbar>
                 <Button icon="sap-icon://add" text="Add Row" press="onAddRow" type="Transparent"/>
                 <ToolbarSpacer/>

@@ -6,10 +6,19 @@ sap.ui.define(
     "sap/m/MessageToast",
     "sap/m/BusyDialog",
     "sap/ui/core/Fragment",
-    "sap/ui/model/Sorter",
-    "sap/ui/model/Filter",
+    "sap/m/Column",
+    "sap/m/ColumnListItem",
+    "sap/m/Label",
+    "sap/m/Text",
+    "sap/m/Input",
+    "sap/m/Button",
+    "sap/ui/core/Item",
+    "sap/m/Table",
+    "sap/m/OverflowToolbar",
+    "sap/m/Title",
   ],
-  function (Controller, JSONModel, MessageBox, MessageToast, BusyDialog, Fragment, Sorter, Filter) {
+  function (Controller, JSONModel, MessageBox, MessageToast, BusyDialog, Fragment,
+            Column, ColumnListItem, Label, Text, Input, Button, Item, Table, OverflowToolbar, Title) {
     "use strict";
 
     var MONTHS = [
@@ -128,14 +137,29 @@ sap.ui.define(
         (res.billing || []).forEach(function (b) {
           var sKey = String(b.client).trim().toLowerCase();
           if (!mClients[sKey]) {
-            mClients[sKey] = { partyName: b.client, offices: {}, current: 0 };
+            mClients[sKey] = { partyName: b.client, offices: {}, priorByCc: {}, current: 0 };
           }
           mClients[sKey].offices[b.cc] = (mClients[sKey].offices[b.cc] || 0) + money(b.current);
           mClients[sKey].current += money(b.current);
           mFactories[b.cc] = true;
         });
 
+        // What each factory billed this party in earlier months. Only the
+        // billing part of OD can be attributed to a factory - the opening
+        // balance and the payments cannot - so these columns are shown for
+        // information and the real OD is still carried once per party.
+        (res.priorBilling || []).forEach(function (b) {
+          var sKey = String(b.client).trim().toLowerCase();
+          if (!mClients[sKey]) {
+            return;
+          }
+          mClients[sKey].priorByCc[b.cc] =
+            (mClients[sKey].priorByCc[b.cc] || 0) + money(b.billedBefore);
+          mFactories[b.cc] = true;
+        });
+
         var aFactories = Object.keys(mFactories).sort();
+        this._aFactories = aFactories;
         var aRows = [];
         Object.keys(mClients).forEach(function (sKey) {
           var oClient = mClients[sKey];
@@ -150,7 +174,7 @@ sap.ui.define(
           // printed from this screen can still list them separately.
           var paid = cash + writtenOff;
 
-          aRows.push({
+          var oRow = {
             partyName: oClient.partyName,
             offices: oClient.offices,
             current: oClient.current,
@@ -161,7 +185,14 @@ sap.ui.define(
             total: oClient.current + od - paid,
             group: bMulti ? ALL_GROUP : aOffices[0],
             groupOrder: bMulti ? 0 : 1 + aFactories.indexOf(aOffices[0])
+          };
+          // Flattened onto the row under index keys, because a binding path
+          // cannot carry a factory name like "Factory 03".
+          aFactories.forEach(function (sCc, i) {
+            oRow["f" + i + "amt"] = oClient.offices[sCc] || 0;
+            oRow["f" + i + "od"] = oClient.priorByCc[sCc] || 0;
           });
+          aRows.push(oRow);
         });
         return aRows;
       },
@@ -176,7 +207,8 @@ sap.ui.define(
           this.getView().setModel(oModel, "tagadaModel");
         }
         oModel.setProperty("/rows", rows);
-        this._applyGrouping();
+        this._markDueRows();
+        this._renderTables();
         this._updateGrandTotal();
       },
 
@@ -213,18 +245,168 @@ sap.ui.define(
         });
       },
 
-      _applyGrouping: function () {
-        var oBinding = this.byId("idTable").getBinding("items");
-        if (!oBinding) {
+      /**
+       * Builds one table per section.
+       *
+       * The All section carries a column pair - amount and OD - for every
+       * factory a party worked at; each factory section carries only its own.
+       * Column sets therefore differ between sections, which one grouped table
+       * cannot do, so each section gets a table of its own.
+       *
+       * Which factories exist changes with the month, so none of this can live
+       * in the view.
+       *
+       * Total OD is the party's real OD and stays editable. It is deliberately
+       * not the sum of the per-factory OD columns: those carry billing only,
+       * while the real figure also includes the opening balance and payments,
+       * which belong to no factory.
+       */
+      _renderTables: function () {
+        var that = this;
+        var oBox = this.byId("idTableBox");
+        var oModel = this.getView().getModel("tagadaModel");
+        oBox.destroyItems();
+        if (!oModel) {
           return;
         }
-        oBinding.sort(new Sorter("sortKey", false, function (oCtx) {
-          var sGroup = oCtx.getProperty("group") || OTHER_GROUP;
-          return { key: sGroup, text: sGroup };
-        }));
-        this._applyDueFilter();
+
+        var aFactories = this._aFactories || [];
+        var aSections = this._sections();
+        oModel.setProperty("/sections", aSections);
+
+        aSections.forEach(function (oSection, iSection) {
+          var oTable = new Table({
+            sticky: ["ColumnHeaders"],
+            headerToolbar: new OverflowToolbar({
+              content: [new Title({ text: oSection.name + "  (" + oSection.rows.length + ")" })]
+            })
+          });
+          oTable.addStyleClass("sapUiSizeCompact");
+          oTable.addStyleClass("sapUiSmallMarginBottom");
+
+          // Only the consolidated section needs a breakdown. A party in a
+          // factory's own section worked at that one factory, so a per-factory
+          // column would just repeat Current.
+          var bSplit = oSection.factoryIdx.length > 1;
+
+          // The section's own total sits in a footer row under the table, with
+          // its label in the name column and the figure under Balance - the
+          // same shape the printed sheet uses.
+          var sBase = "tagadaModel>/sections/" + iSection + "/";
+          oTable.addColumn(new Column({ width: "48px", hAlign: "Center", header: new Label({ text: "SL" }) }));
+          oTable.addColumn(new Column({
+            width: "150px",
+            header: new Label({ text: "Party Name" }),
+            footer: new Label({ text: "{" + sBase + "totalLabel}", design: "Bold" })
+          }));
+          if (bSplit) {
+            oSection.factoryIdx.forEach(function (iFac) {
+              oTable.addColumn(new Column({ width: "95px", hAlign: "Right", header: new Label({ text: aFactories[iFac] }) }));
+              oTable.addColumn(new Column({ width: "85px", hAlign: "Right", header: new Label({ text: "OD" }) }));
+            });
+          }
+          var aHeads = bSplit
+            ? ["Current", "Total OD", "Total", "Paid", "Balance"]
+            : ["Current", "OD", "Total", "Paid", "Balance"];
+          aHeads.forEach(function (sHead) {
+            var oCol = new Column({ width: "105px", hAlign: "Right", header: new Label({ text: sHead }) });
+            if (sHead === "Balance") {
+              oCol.setFooter(new Label({ text: "{" + sBase + "balanceTotal}", design: "Bold" }));
+            }
+            oTable.addColumn(oCol);
+          });
+          oTable.addColumn(new Column({ width: "48px", hAlign: "Center", header: new Label({ text: "" }) }));
+
+          var aCells = [
+            new Text({ text: "{tagadaModel>sl}" }),
+            new Input({
+              value: "{tagadaModel>partyName}",
+              placeholder: "Enter party name",
+              showSuggestion: true,
+              suggestionItems: {
+                path: "ClientModel>/Clients_results",
+                template: new Item({ text: "{ClientModel>client}" }),
+                templateShareable: false
+              }
+            })
+          ];
+          if (bSplit) {
+            oSection.factoryIdx.forEach(function (iFac) {
+              aCells.push(new Text({ text: "{tagadaModel>f" + iFac + "amt}" }));
+              aCells.push(new Text({ text: "{tagadaModel>f" + iFac + "od}" }));
+            });
+          }
+          aCells.push(new Text({ text: "{tagadaModel>current}" }));
+          aCells.push(new Input({
+            value: "{tagadaModel>od}", type: "Number", placeholder: "0",
+            liveChange: that.onOdChange.bind(that)
+          }));
+          // What the party owes before paying: this month's work plus real OD.
+          aCells.push(new Text({
+            text: { parts: ["tagadaModel>current", "tagadaModel>od"],
+                    formatter: function (c, o) { return (parseFloat(c) || 0) + (parseFloat(o) || 0); } }
+          }));
+          aCells.push(new Text({ text: "{tagadaModel>paid}" }));
+          aCells.push(new Text({ text: "{tagadaModel>total}" }));
+          aCells.push(new Button({
+            icon: "sap-icon://delete", type: "Transparent", tooltip: "Delete row",
+            press: that.onDeleteRow.bind(that)
+          }));
+
+          oTable.bindItems({
+            path: "tagadaModel>/sections/" + iSection + "/rows",
+            template: new ColumnListItem({ cells: aCells }),
+            templateShareable: false
+          });
+          oBox.addItem(oTable);
+        });
       },
 
+      /**
+       * The sections to draw, in slip order: consolidated parties first, then
+       * factory by factory. Each knows which factories its own rows actually
+       * used, so a section never shows a column that means nothing in it.
+       */
+      _sections: function () {
+        var aFactories = this._aFactories || [];
+        var aOut = [];
+        var mByName = {};
+        this._visibleRows().forEach(function (r) {
+          var sGroup = r.group || OTHER_GROUP;
+          if (!mByName[sGroup]) {
+            mByName[sGroup] = { name: sGroup, order: r.groupOrder, rows: [], seen: {} };
+            aOut.push(mByName[sGroup]);
+          }
+          mByName[sGroup].rows.push(r);
+          aFactories.forEach(function (sCc, i) {
+            if (r["f" + i + "amt"] || r["f" + i + "od"]) {
+              mByName[sGroup].seen[i] = true;
+            }
+          });
+        });
+        aOut.sort(function (a, b) { return a.order - b.order; });
+        aOut.forEach(function (o) {
+          var iOwn = aFactories.indexOf(o.name);
+          if (iOwn >= 0) {
+            // A factory's own section shows that factory and nothing else.
+            // A party here worked only at this factory this month, even if an
+            // earlier month took them elsewhere - that history belongs in
+            // Total OD, not in a column for a factory this section is not for.
+            o.factoryIdx = [iOwn];
+          } else if (o.name === ALL_GROUP) {
+            // Consolidated parties: a pair for every factory they used.
+            o.factoryIdx = Object.keys(o.seen).map(Number)
+              .sort(function (x, y) { return x - y; });
+          } else {
+            // Hand-typed and carried-over rows belong to no factory.
+            o.factoryIdx = [];
+          }
+          delete o.seen;
+          o.totalLabel = o.name + " Total";
+        });
+        this._sumSections(aOut);
+        return aOut;
+      },
       _isDueRow: function (oRow) {
         if (!this.byId("idOnlyDues").getSelected()) {
           return true;
@@ -233,7 +415,8 @@ sap.ui.define(
       },
 
       onOnlyDuesChange: function () {
-        this._applyDueFilter();
+        this._markDueRows();
+        this._renderTables();
         this._updateGrandTotal();
       },
 
@@ -248,23 +431,47 @@ sap.ui.define(
        * A blank row typed in by hand always stays, or it would vanish the
        * instant it was added, before anything had been entered on it.
        */
-      _applyDueFilter: function () {
-        var oBinding = this.byId("idTable").getBinding("items");
+      /**
+       * Totals each section's Balance for the row under its table. Blank rows
+       * are skipped so a party not yet typed in cannot add a zero to the count.
+       */
+      _sumSections: function (aSections) {
+        aSections.forEach(function (o) {
+          var fTotal = 0;
+          var iParties = 0;
+          o.rows.forEach(function (r) {
+            if (r.partyName) {
+              fTotal += money(r.total);
+              iParties++;
+            }
+          });
+          o.balanceTotal = fTotal;
+          o.partyCount = iParties;
+        });
+      },
+
+      // Editing an OD changes a Balance, so the section total under it has to
+      // follow. The sections hold the same row objects as /rows, so there is
+      // nothing to rebuild - only the totals need recomputing.
+      _refreshSectionTotals: function () {
         var oModel = this.getView().getModel("tagadaModel");
-        if (!oBinding || !oModel) {
+        if (!oModel) {
           return;
         }
-        if (!this.byId("idOnlyDues").getSelected()) {
-          oBinding.filter([]);
+        var aSections = oModel.getProperty("/sections") || [];
+        this._sumSections(aSections);
+        oModel.setProperty("/sections", aSections);
+        oModel.refresh(true);
+      },
+
+      _markDueRows: function () {
+        var oModel = this.getView().getModel("tagadaModel");
+        if (!oModel || !this.byId("idOnlyDues").getSelected()) {
           return;
         }
         (oModel.getProperty("/rows") || []).forEach(function (r) {
           r.showOnSlip = !r.partyName || money(r.total) !== 0;
         });
-        oBinding.filter(new Filter({
-          path: "showOnSlip",
-          test: function (bShow) { return bShow === true; },
-        }));
       },
 
       // The rows the slip is actually showing. Print, Excel and the invoices
@@ -309,6 +516,7 @@ sap.ui.define(
         var od = money(oEvent.getParameter("value"));
         oModel.setProperty(path + "/od", od);
         oModel.setProperty(path + "/total", current + od - paid);
+        this._refreshSectionTotals();
         this._updateGrandTotal();
       },
 
@@ -320,7 +528,7 @@ sap.ui.define(
           this.getView().setModel(oModel, "tagadaModel");
         }
         var rows = oModel.getProperty("/rows") || [];
-        rows.push({
+        var oNew = {
           sl: 0,
           partyName: "",
           current: 0,
@@ -331,7 +539,15 @@ sap.ui.define(
           total: 0,
           group: OTHER_GROUP,
           groupOrder: OTHER_ORDER
+        };
+        // A hand-typed row belongs to no factory, so its per-factory cells are
+        // blank rather than missing - an absent property renders as nothing at
+        // all and the row would look broken.
+        (this._aFactories || []).forEach(function (sCc, i) {
+          oNew["f" + i + "amt"] = 0;
+          oNew["f" + i + "od"] = 0;
         });
+        rows.push(oNew);
         this._setTableData(rows);
       },
 
@@ -437,6 +653,9 @@ sap.ui.define(
           this.getView().setModel(oModel, "tagadaModel");
         }
         var rows = oModel.getProperty("/rows") || [];
+        // Captured here: the callbacks below are plain functions, so `this` is
+        // not the controller inside them.
+        var aFac = this._aFactories || [];
 
         var indexByName = {};
         rows.forEach(function (r, i) {
@@ -467,7 +686,7 @@ sap.ui.define(
             });
           } else {
             var current = money(oldRow.current);
-            rows.push({
+            var oOld = {
               sl: 0,
               partyName: oldRow.partyName,
               current: current,
@@ -478,7 +697,13 @@ sap.ui.define(
               total: current + od,
               group: OTHER_GROUP,
               groupOrder: OTHER_ORDER
+            };
+            // Carried over from a CSV, so it has no factory of its own.
+            aFac.forEach(function (sCc, i) {
+              oOld["f" + i + "amt"] = 0;
+              oOld["f" + i + "od"] = 0;
             });
+            rows.push(oOld);
             indexByName[key] = rows.length - 1;
             added++;
           }
@@ -535,8 +760,10 @@ sap.ui.define(
 
       onPrint: function () {
         var that = this;
-        var aGroups = this._groupedRows();
-        if (aGroups.length === 0) {
+        // Built from the same sections the screen draws, so the printed sheet
+        // cannot drift from what was just checked.
+        var aSections = this._sections();
+        if (aSections.length === 0) {
           MessageBox.information("Nothing to print yet");
           return;
         }
@@ -545,8 +772,10 @@ sap.ui.define(
         var monthName = MONTHS[parseInt(month, 10) - 1];
 
         var grandTotal = 0;
-        aGroups.forEach(function (g) {
-          g.rows.forEach(function (r) { grandTotal += money(r.total); });
+        aSections.forEach(function (g) {
+          g.rows.forEach(function (r) {
+            if (r.partyName) { grandTotal += money(r.total); }
+          });
         });
 
         var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Tagada Slip</title>';
@@ -563,9 +792,13 @@ sap.ui.define(
         html += 'td.num { text-align: right; }';
         html += 'td.center { text-align: center; }';
         html += '.grand td { font-weight: bold; font-size: 14px; background: #f2f2f2; }';
-        html += '.section { page-break-after: always; }';
-        html += '.section:last-child { page-break-after: auto; }';
-        html += '.section h3 { font-size: 18px; margin-bottom: 10px; }';
+        // Sections run on continuously - no page break between them. Only the
+        // heading is kept with the rows under it, so a section title cannot be
+        // orphaned at the foot of a page.
+        html += '.section { margin-bottom: 18px; }';
+        html += '.section h3 { font-size: 18px; margin-bottom: 10px; page-break-after: avoid; }';
+        html += 'tr { page-break-inside: avoid; }';
+        html += 'thead { display: table-header-group; }';
         html += '</style></head><body>';
 
         html += '<div class="header">';
@@ -573,41 +806,66 @@ sap.ui.define(
         html += '<h2>' + monthName + ' ' + year + '</h2>';
         html += '</div>';
 
-        // Consolidated parties come first, then one section per factory, each
-        // starting on its own page so a factory's sheet can be handed over.
-        aGroups.forEach(function (oGroup) {
+        // Consolidated parties first, then one section per factory, running on
+        // down the page. Each section carries the same columns it shows on
+        // screen, so the sheet in hand matches what was checked before printing.
+        var aFactories = this._aFactories || [];
+        aSections.forEach(function (oSection) {
+          var aRows = oSection.rows.filter(function (r) { return !!r.partyName; });
+          if (aRows.length === 0) {
+            return;
+          }
+          var bSplit = oSection.factoryIdx.length > 1;
           var sectionTotal = 0;
-          html += '<div class="section">';
-          html += '<h3>' + that._escapeHtml(oGroup.name) + '</h3>';
-          html += '<table>';
-          html += '<tr><th style="width:50px">SL</th><th>Party Name</th>'
-            + '<th class="num" style="width:110px">Current</th>'
-            + '<th class="num" style="width:110px">OD</th>'
-            + '<th class="num" style="width:110px">Paid</th>'
-            + '<th class="num" style="width:110px">Due</th>'
-            + '<th style="width:140px"></th></tr>';
 
-          oGroup.rows.forEach(function (r) {
+          html += '<div class="section">';
+          html += '<h3>' + that._escapeHtml(oSection.name) + '</h3>';
+          html += '<table><thead><tr><th style="width:44px">SL</th><th style="width:170px">Party Name</th>';
+          if (bSplit) {
+            oSection.factoryIdx.forEach(function (iFac) {
+              html += '<th class="num" style="width:95px">' + that._escapeHtml(aFactories[iFac]) + '</th>';
+              html += '<th class="num" style="width:85px">OD</th>';
+            });
+          }
+          (bSplit
+            ? ["Current", "Total OD", "Total", "Paid", "Balance"]
+            : ["Current", "OD", "Total", "Paid", "Balance"]
+          ).forEach(function (sHead) {
+            html += '<th class="num" style="width:100px">' + sHead + '</th>';
+          });
+          html += '<th style="width:110px"></th></tr></thead><tbody>';
+
+          aRows.forEach(function (r) {
             sectionTotal += money(r.total);
             html += '<tr>';
             html += '<td class="center">' + r.sl + '</td>';
             html += '<td>' + that._escapeHtml(r.partyName) + '</td>';
+            if (bSplit) {
+              oSection.factoryIdx.forEach(function (iFac) {
+                html += '<td class="num">' + money(r["f" + iFac + "amt"]) + '</td>';
+                html += '<td class="num">' + money(r["f" + iFac + "od"]) + '</td>';
+              });
+            }
             html += '<td class="num">' + money(r.current) + '</td>';
             html += '<td class="num">' + money(r.od) + '</td>';
+            html += '<td class="num">' + (money(r.current) + money(r.od)) + '</td>';
             html += '<td class="num">' + money(r.paid) + '</td>';
             html += '<td class="num">' + money(r.total) + '</td>';
             html += '<td></td>';
             html += '</tr>';
           });
 
-          html += '<tr class="grand"><td colspan="5" style="text-align:right">'
-            + that._escapeHtml(oGroup.name) + ' Total</td><td class="num">'
+          // Everything up to the Balance cell, so the section total lands under it.
+          var iLead = 2 + (bSplit ? oSection.factoryIdx.length * 2 : 0) + 4;
+          html += '<tr class="grand"><td colspan="' + iLead + '" style="text-align:right">'
+            + that._escapeHtml(oSection.name) + ' Total</td><td class="num">'
             + sectionTotal + '</td><td></td></tr>';
-          html += '</table></div>';
+          html += '</tbody></table></div>';
         });
 
-        html += '<table><tr class="grand"><td colspan="5" style="text-align:right">Grand Total</td>'
-          + '<td class="num" style="width:110px">' + grandTotal + '</td><td style="width:140px"></td></tr></table>';
+        html += '<table><tr class="grand"><td style="text-align:right">Grand Total</td>'
+          + '<td class="num" style="width:100px">' + grandTotal + '</td>'
+          + '<td style="width:110px"></td></tr></table>';
         html += '</body></html>';
 
         var printWindow = window.open('', '_blank');

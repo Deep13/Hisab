@@ -195,7 +195,11 @@ sap.ui.define(
                 mLessByPayment[entry.id].toLocaleString("en-IN") + ")";
             }
           } else if (entry.category === "client_writeoff") {
-            entry.details = entry.client + (entry.note ? " - " + entry.note : "");
+            // A negative figure is an advance the client let go of, not a due
+            // forgiven, and reads as nonsense unless it is named.
+            entry.details = entry.client +
+              (entry.amount < 0 ? "  (advance let go)" : "") +
+              (entry.note ? " - " + entry.note : "");
           } else if (entry.category === "labour_payment") {
             entry.details = (entry.labour || "") + (entry.note ? " - " + entry.note : "");
           } else if (entry.category === "machine_expense") {
@@ -428,14 +432,15 @@ sap.ui.define(
         var bWriteoff = !!oData.showWriteoff;
         var fWriteoff = bWriteoff ? (parseFloat(oData.writeoff) || 0) : 0;
 
-        if (fAmount < 0 || fWriteoff < 0) {
-          MessageBox.error("Amounts cannot be negative");
+        if (fAmount < 0) {
+          MessageBox.error("Received cannot be negative");
           return;
         }
-        // The whole bill may be forgiven, so on a client payment it is the pair
-        // that has to add up to something rather than the amount alone.
+        // A write-off goes whichever way the account is out: positive forgives
+        // what a client owes, negative cancels an advance they are letting go
+        // of. So the pair only has to come to something other than nothing.
         if (bWriteoff) {
-          if (fAmount + fWriteoff <= 0) {
+          if (fAmount === 0 && fWriteoff === 0) {
             MessageBox.error("Enter an amount received, a write-off, or both");
             return;
           }
