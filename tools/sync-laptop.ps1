@@ -231,18 +231,34 @@ if (-not $backupOk) {
 # --- 5. Replace the database --------------------------------------------------
 Step 'Replacing this laptop database with the office copy...'
 
-$recreate = Run $mysql ((Get-DbArgs) + @('-e',
-    "DROP DATABASE IF EXISTS ``$Database``; CREATE DATABASE ``$Database`` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"))
-if ($recreate.Code -ne 0) {
-    Stop-WithProblem 'Could not prepare the database for import.' `
-        'Nothing has been changed. Check the log and try again.'
+# The database is NOT dropped first. The export carries its own DROP TABLE
+# before each CREATE TABLE, so importing replaces every table anyway - and if
+# this is interrupted part way, closing the window or a reboot, what is left is
+# a half-updated database rather than an empty one. Dropping first meant any
+# interruption between the drop and the end of the import destroyed everything
+# with no way back, because the rollback below only runs when the import
+# RETURNS an error; a killed process never reaches it.
+#
+# The cost is that a table deleted at the office would linger here. That is a
+# far smaller problem than an emptied database, and re-running the sync always
+# finishes the job.
+$exists = Run $mysql ((Get-DbArgs) + @('--batch', '--skip-column-names', '-e',
+    "SHOW DATABASES LIKE '$Database'"))
+if (-not $exists.Output.Trim()) {
+    $create = Run $mysql ((Get-DbArgs) + @('-e',
+        "CREATE DATABASE ``$Database`` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"))
+    if ($create.Code -ne 0) {
+        Stop-WithProblem 'Could not prepare the database for import.' `
+            'Nothing has been changed. Check the log and try again.'
+    }
 }
 
 $import = Import-SqlFile -SqlPath $dumpFull -TargetDb $Database
 if ($import.Code -ne 0) {
     Say '   Import failed - putting your previous database back...' 'Red'
     if ($backupOk) {
-        Run $mysql ((Get-DbArgs) + @('-e', "DROP DATABASE IF EXISTS ``$Database``; CREATE DATABASE ``$Database``;")) | Out-Null
+        # The backup carries its own DROP TABLE per table, so it overwrites
+        # whatever the half-finished import left behind, without dropping.
         $restore = Import-SqlFile -SqlPath $backupFile -TargetDb $Database
         if ($restore.Code -eq 0) {
             Stop-WithProblem 'The office copy would not import, so your previous database was put back.' `

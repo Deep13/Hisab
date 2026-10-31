@@ -86,6 +86,14 @@ function Run {
     return [pscustomobject]@{ Code = $code; Output = $output }
 }
 
+# Credentials shared by every mysql call below.
+function Get-DbArgs {
+    $a = @("--user=$DbUser")
+    if ($DbPassword -ne '') { $a += "--password=$DbPassword" }
+    $a += '--host=127.0.0.1'
+    return $a
+}
+
 Clear-Host
 Write-Host ''
 Write-Host '  =========================================================' -ForegroundColor Green
@@ -108,6 +116,7 @@ if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) {
         'Ask Deepak to install Git for Windows.'
 }
 
+$mysql = Join-Path $MysqlBin 'mysql.exe'
 $mysqldump = Join-Path $MysqlBin 'mysqldump.exe'
 $mysqladmin = Join-Path $MysqlBin 'mysqladmin.exe'
 if (-not (Test-Path $mysqldump)) {
@@ -167,7 +176,78 @@ if ($stashed) {
 }
 Say '   Program is up to date.' 'Green'
 
-# --- 3. Export the database ---------------------------------------------------
+# --- 3. Apply any database changes that came with the code --------------------
+#
+# Code and schema used to travel on separate rails: this script pulled new code
+# but never the database changes it needed, so the office could be running new
+# code against an old schema until someone remembered to run SQL by hand. That
+# gap caused real trouble, so it is closed here.
+#
+# Only files named migrate_*.sql or repair_*.sql are ever run, and each is run
+# once. That allowlist matters: sql\ also holds full database dumps, and running
+# one of those would wipe everything.
+Step 'Applying any new database changes...'
+
+$sqlDir = Join-Path $RepoPath 'sql'
+$applied = @()
+
+$conn = Run $mysql ((Get-DbArgs) + @('-e', @"
+CREATE TABLE IF NOT EXISTS ``schema_migrations`` (
+  ``filename`` VARCHAR(190) NOT NULL,
+  ``applied_on`` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (``filename``)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+"@))
+if ($conn.Code -ne 0) {
+    Stop-WithProblem 'Could not prepare the database for its changes.' `
+        'Nothing has been changed. Show Deepak the log named at the bottom of this window.'
+}
+
+$done = @{}
+$rows = Run $mysql ((Get-DbArgs) + @('--batch', '--skip-column-names', '-e',
+    'SELECT filename FROM `schema_migrations`'))
+foreach ($line in ($rows.Output -split "`r?`n")) {
+    if ($line.Trim()) { $done[$line.Trim()] = $true }
+}
+
+$pending = Get-ChildItem -Path $sqlDir -Filter '*.sql' -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match '^(migrate|repair)_' -and -not $done.ContainsKey($_.Name) } |
+    Sort-Object Name
+
+if ($pending.Count -gt 0) {
+    # A copy of the database before anything is altered, so a change that goes
+    # wrong is never the end of the story.
+    $safeDir = Join-Path $RepoPath 'backups'
+    if (-not (Test-Path $safeDir)) { New-Item -ItemType Directory -Path $safeDir -Force | Out-Null }
+    $safeFile = Join-Path $safeDir ("office-before-changes-" + (Get-Date -Format 'yyyy-MM-dd_HHmmss') + '.sql')
+    $safe = Run $mysqldump ((Get-DbArgs) + @(
+        '--single-transaction', '--routines', '--default-character-set=utf8mb4',
+        '--skip-extended-insert', '--result-file', $safeFile, $Database))
+    if ($safe.Code -ne 0) {
+        Stop-WithProblem 'Could not back up the database before changing it, so nothing was changed.' `
+            'Show Deepak the log named at the bottom of this window.'
+    }
+    Say "   Saved a copy first: backups\$(Split-Path $safeFile -Leaf)" 'DarkGray'
+
+    foreach ($file in $pending) {
+        $run = Run 'cmd.exe' @('/c', "`"$mysql`" $((Get-DbArgs) -join ' ') $Database < `"$($file.FullName)`"")
+        if ($run.Code -ne 0) {
+            # Stopping here matters: exporting a half-changed database would
+            # push the mess to the laptop as well.
+            Stop-WithProblem "The database change $($file.Name) did not apply, so nothing was uploaded." `
+                "Show Deepak the log named at the bottom of this window. A copy of the database before the change is in backups\$(Split-Path $safeFile -Leaf)."
+        }
+        $esc = $file.Name.Replace("'", "''")
+        Run $mysql ((Get-DbArgs) + @('-e',
+            "INSERT IGNORE INTO ``schema_migrations`` (``filename``) VALUES ('$esc')")) | Out-Null
+        $applied += $file.Name
+        Say "   Applied $($file.Name)" 'Green'
+    }
+} else {
+    Say '   Nothing new to apply.' 'Green'
+}
+
+# --- 4. Export the database ---------------------------------------------------
 Step 'Exporting the database (this can take a minute)...'
 
 $dumpDir = Split-Path $dumpFull -Parent
