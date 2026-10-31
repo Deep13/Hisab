@@ -197,15 +197,15 @@ CREATE TABLE IF NOT EXISTS ``schema_migrations`` (
   ``applied_on`` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (``filename``)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-"@))
+"@, $Database))
 if ($conn.Code -ne 0) {
     Stop-WithProblem 'Could not prepare the database for its changes.' `
         'Nothing has been changed. Show Deepak the log named at the bottom of this window.'
 }
 
 $done = @{}
-$rows = Run $mysql ((Get-DbArgs) + @('--batch', '--skip-column-names', '-e',
-    'SELECT filename FROM `schema_migrations`'))
+$rows = Run $mysql ((Get-DbArgs) + @("--batch", "--skip-column-names", "-e",
+    "SELECT filename FROM ``schema_migrations``", $Database))
 foreach ($line in ($rows.Output -split "`r?`n")) {
     if ($line.Trim()) { $done[$line.Trim()] = $true }
 }
@@ -238,8 +238,8 @@ if ($pending.Count -gt 0) {
                 "Show Deepak the log named at the bottom of this window. A copy of the database before the change is in backups\$(Split-Path $safeFile -Leaf)."
         }
         $esc = $file.Name.Replace("'", "''")
-        Run $mysql ((Get-DbArgs) + @('-e',
-            "INSERT IGNORE INTO ``schema_migrations`` (``filename``) VALUES ('$esc')")) | Out-Null
+        Run $mysql ((Get-DbArgs) + @("-e",
+            "INSERT IGNORE INTO ``schema_migrations`` (``filename``) VALUES ('$esc')", $Database)) | Out-Null
         $applied += $file.Name
         Say "   Applied $($file.Name)" 'Green'
     }
