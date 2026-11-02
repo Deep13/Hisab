@@ -52,6 +52,7 @@ $allowedMethods = [
     'getKhataOpening',
     'setKhataOpening',
     'getClientOpenings',
+    'saveClientOpening',
     'saveClientOpenings',
     'getClientBalances',
     'getClientLedger',
@@ -1630,6 +1631,42 @@ function getClientOpenings() {
 }
 
 /** Saves the whole opening-balance sheet in one round trip. */
+/**
+ * Sets one client's opening balance, touching that client's row and no other.
+ *
+ * The sheet-wide save stamps every row with the one date in the form, so
+ * editing a single client used to move all 439 as-of dates with it - and that
+ * date is the cut-off deciding what counts as already settled, so every other
+ * client's dues silently changed. This writes one row.
+ */
+function saveClientOpening() {
+    $conn = getDbConnection();
+    $obj = getPostData();
+    $client = capitalise($obj->client ?? '');
+    $asOf = trim($obj->as_of_date ?? '');
+    $amount = (float)($obj->amount ?? 0);
+
+    if ($client === '') {
+        return json_encode(["status" => "failed", "error" => "Client is required"]);
+    }
+    if ($asOf === '') {
+        return json_encode(["status" => "failed", "error" => "Pick the date this balance is as at"]);
+    }
+
+    $stmt = @$conn->prepare(
+        "INSERT INTO `client_opening` (`client`, `amount`, `as_of_date`) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE `amount` = VALUES(`amount`), `as_of_date` = VALUES(`as_of_date`)"
+    );
+    if (!$stmt) {
+        return json_encode(["status" => "failed", "error" => "Table 'client_opening' does not exist. Please run sql/daily_khata.sql."]);
+    }
+    $stmt->bind_param("sds", $client, $amount, $asOf);
+    if (!$stmt->execute()) {
+        return json_encode(["status" => "failed", "error" => "Could not save the opening balance"]);
+    }
+    return json_encode(["status" => "success", "client" => $client, "amount" => $amount, "as_of_date" => $asOf]);
+}
+
 function saveClientOpenings() {
     $conn = getDbConnection();
     $obj = getPostData();
@@ -1648,9 +1685,10 @@ function saveClientOpenings() {
         return json_encode(["status" => "failed", "error" => "Table 'client_opening' does not exist. Please run sql/daily_khata.sql."]);
     }
 
-    // The whole sheet is written, zeros included. Skipping them would leave a
-    // cleared figure lingering at its old amount, and would lose the as-of date
-    // entirely on a sheet where every client happens to be square.
+    // Only the rows the caller actually changed arrive here, zeros included so
+    // that clearing a figure clears it. A client whose amount was not touched
+    // is never sent, and so keeps their own as-of date - without that, editing
+    // one client moved the cut-off date for every client on the sheet.
     $conn->begin_transaction();
     $saved = 0;
     foreach ($rows as $row) {

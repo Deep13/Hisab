@@ -60,6 +60,11 @@
 						<columns>
 							<Column><Label text="Client"/></Column>
 							<Column width="14rem" hAlign="End"><Label text="Opening Balance"/></Column>
+							<!-- Each client's own cut-off. Shown because it decides what
+							     counts as already settled for them, and it used to move
+							     without anyone seeing it. -->
+							<Column width="9rem"><Label text="As At"/></Column>
+							<Column width="7rem" hAlign="Center"><Label text=""/></Column>
 						</columns>
 						<items>
 							<ColumnListItem>
@@ -67,6 +72,9 @@
 									<Text text="{openingModel>client}"/>
 									<Input value="{openingModel>amount}" type="Number" textAlign="End"
 										width="12rem" liveChange="onOpeningAmountChange"/>
+									<Text text="{openingModel>asOfText}"/>
+									<Button text="Save" type="Transparent" icon="sap-icon://save"
+										press="onSaveOneOpening" tooltip="Save only this client"/>
 								</cells>
 							</ColumnListItem>
 						</items>

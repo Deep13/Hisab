@@ -108,6 +108,12 @@ sap.ui.define(
               return;
             }
             var rows = res.rows || [];
+            // What each figure was when it arrived, so a save can tell which
+            // rows were actually touched and leave the rest alone.
+            rows.forEach(function (r) {
+              r.original = parseFloat(r.amount) || 0;
+              r.asOfText = r.as_of_date || "not set";
+            });
             var oModel = new JSONModel({ all: rows, visible: rows });
             oModel.setSizeLimit(2000);
             that.getView().setModel(oModel, "openingModel");
@@ -199,6 +205,48 @@ sap.ui.define(
         this.byId("idOpeningTotal").setText(total.toLocaleString("en-IN"));
       },
 
+      /**
+       * Saves one client's opening balance and nothing else.
+       *
+       * This is the safe way to change a single figure: the sheet-wide Save
+       * rewrites the as-of date of every row it sends, and that date decides
+       * what counts as already settled for that client.
+       */
+      onSaveOneOpening: function (oEvent) {
+        var that = this;
+        var oRow = oEvent.getSource().getBindingContext("openingModel").getObject();
+        var sAsOf = this.byId("idClientAsOf").getValue();
+        if (!sAsOf) {
+          MessageBox.error("Pick the date this balance is as at");
+          return;
+        }
+
+        $.ajax({
+          url: this.uri,
+          type: "POST",
+          data: {
+            method: "saveClientOpening",
+            data: JSON.stringify({
+              client: oRow.client,
+              amount: parseFloat(oRow.amount) || 0,
+              as_of_date: sAsOf,
+            }),
+          },
+          dataType: "json",
+          success: function (res) {
+            if (res && res.status === "success") {
+              MessageToast.show(res.client + " saved");
+              that._loadClientOpenings();
+            } else {
+              MessageBox.error((res && res.error) || "The balance could not be saved");
+            }
+          },
+          error: function (request) {
+            MessageBox.error("The balance could not be saved: " + request.responseText);
+          },
+        });
+      },
+
       onSaveClientOpenings: function () {
         var that = this;
         var oModel = this.getView().getModel("openingModel");
@@ -211,14 +259,23 @@ sap.ui.define(
           return;
         }
 
-        // The whole sheet goes up, zeros included, so that clearing a figure
-        // actually clears it and the as-of date is always recorded.
-        var aRows = (oModel.getProperty("/all") || []).map(function (r) {
+        // Only the rows actually edited go up. Sending the whole sheet stamped
+        // every client with the date in the box above, and since that date is
+        // the cut-off for what counts as already settled, changing one client
+        // silently moved everyone else's dues.
+        var aAll = oModel.getProperty("/all") || [];
+        var aRows = aAll.filter(function (r) {
+          return (parseFloat(r.amount) || 0) !== (parseFloat(r.original) || 0);
+        }).map(function (r) {
           return { client: r.client, amount: parseFloat(r.amount) || 0 };
         });
 
-        if (!aRows.length) {
+        if (!aAll.length) {
           MessageBox.information("There are no clients to save");
+          return;
+        }
+        if (!aRows.length) {
+          MessageBox.information("Nothing has been changed, so nothing was saved");
           return;
         }
 
@@ -234,7 +291,10 @@ sap.ui.define(
           success: function (res) {
             sap.ui.core.BusyIndicator.hide();
             if (res && res.status === "success") {
-              MessageToast.show(res.saved + " client balances saved");
+              MessageToast.show(
+                res.saved + (res.saved === 1 ? " balance saved" : " changed balances saved")
+              );
+              that._loadClientOpenings();
             } else {
               MessageBox.error((res && res.error) || "Client balances could not be saved");
             }
